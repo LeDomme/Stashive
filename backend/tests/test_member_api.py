@@ -682,3 +682,281 @@ async def test_member_update_rejects_invalid_role_without_changing_membership(
         )
         assert membership is not None
         assert membership.role == "viewer"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("actor_role", "target_role"),
+    [
+        ("owner", "viewer"),
+        ("owner", "editor"),
+        ("owner", "admin"),
+        ("admin", "viewer"),
+        ("admin", "editor"),
+        ("admin", "admin"),
+    ],
+)
+async def test_member_delete_allows_owner_and_admin_to_remove_members(
+    database: Database, actor_role: str, target_role: str
+) -> None:
+    app.state.database = database
+    with database.session_factory() as session:
+        owner = User(username="owner", password_hash="owner-password-hash")
+        admin = User(username="admin", password_hash="admin-password-hash")
+        target = User(username="target", password_hash="target-password-hash")
+        session.add_all([owner, admin, target])
+        session.flush()
+        collection = Collection(name="Shared", type="movies", owner_user_id=owner.id)
+        session.add(collection)
+        session.flush()
+        session.add_all(
+            [
+                CollectionMember(collection_id=collection.id, user_id=admin.id, role="admin"),
+                CollectionMember(collection_id=collection.id, user_id=target.id, role=target_role),
+            ]
+        )
+        session.commit()
+        collection_id, target_id = collection.id, target.id
+        actor = owner if actor_role == "owner" else admin
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        client.cookies.set("stashive_session", session_token(database, actor))
+        response = await client.delete(f"/api/collections/{collection_id}/members/{target_id}")
+        assert response.status_code == 204
+        assert response.content == b""
+        members = await client.get(f"/api/collections/{collection_id}/members")
+        assert members.status_code == 200
+        assert {"username": "target", "role": target_role} not in members.json()
+        assert members.json() == [{"username": "admin", "role": "admin"}]
+    with database.session_factory() as session:
+        assert (
+            session.scalar(
+                select(CollectionMember).where(
+                    CollectionMember.collection_id == collection_id,
+                    CollectionMember.user_id == target_id,
+                )
+            )
+            is None
+        )
+        memberships = session.scalars(
+            select(CollectionMember).where(CollectionMember.collection_id == collection_id)
+        ).all()
+        assert {(item.user_id, item.role) for item in memberships} == {(admin.id, "admin")}
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("actor_role", "expected"),
+    [
+        ("editor", 403),
+        ("viewer", 403),
+        ("outsider", 404),
+        ("instance", 404),
+    ],
+)
+async def test_member_delete_hides_or_forbids_unqualified_actors(
+    database: Database, actor_role: str, expected: int
+) -> None:
+    app.state.database = database
+    with database.session_factory() as session:
+        users = {}
+        for name, instance_admin in (
+            ("owner", False),
+            ("editor", False),
+            ("viewer", False),
+            ("outsider", False),
+            ("instance", True),
+            ("target", False),
+        ):
+            user = User(
+                username=name,
+                password_hash=f"{name}-password-hash",
+                is_instance_admin=instance_admin,
+            )
+            session.add(user)
+            users[name] = user
+        session.flush()
+        collection = Collection(
+            name="Shared", type="movies", description="Original", owner_user_id=users["owner"].id
+        )
+        session.add(collection)
+        session.flush()
+        session.add_all(
+            [
+                CollectionMember(
+                    collection_id=collection.id, user_id=users["editor"].id, role="editor"
+                ),
+                CollectionMember(
+                    collection_id=collection.id, user_id=users["viewer"].id, role="viewer"
+                ),
+                CollectionMember(
+                    collection_id=collection.id, user_id=users["target"].id, role="viewer"
+                ),
+            ]
+        )
+        session.commit()
+        collection_id, target_id = collection.id, users["target"].id
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        client.cookies.set("stashive_session", session_token(database, users[actor_role]))
+        response = await client.delete(f"/api/collections/{collection_id}/members/{target_id}")
+    assert response.status_code == expected
+    with database.session_factory() as session:
+        collection = session.get(Collection, collection_id)
+        memberships = session.scalars(
+            select(CollectionMember).where(CollectionMember.collection_id == collection_id)
+        ).all()
+        assert collection is not None
+        assert collection.name == "Shared"
+        assert collection.description == "Original"
+        assert {(item.user_id, item.role) for item in memberships} == {
+            (users["editor"].id, "editor"),
+            (users["viewer"].id, "viewer"),
+            (target_id, "viewer"),
+        }
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("target_kind", ["member", "non_member", "unknown"])
+@pytest.mark.parametrize("actor_role", ["outsider", "instance"])
+async def test_member_delete_hides_target_details_from_non_members(
+    database: Database, actor_role: str, target_kind: str
+) -> None:
+    app.state.database = database
+    with database.session_factory() as session:
+        owner = User(username="owner", password_hash="owner-password-hash")
+        member = User(username="member", password_hash="member-password-hash")
+        non_member = User(username="non-member", password_hash="non-member-password-hash")
+        outsider = User(username="outsider", password_hash="outsider-password-hash")
+        instance = User(
+            username="instance", password_hash="instance-password-hash", is_instance_admin=True
+        )
+        session.add_all([owner, member, non_member, outsider, instance])
+        session.flush()
+        collection = Collection(name="Shared", type="movies", owner_user_id=owner.id)
+        session.add(collection)
+        session.flush()
+        session.add(CollectionMember(collection_id=collection.id, user_id=member.id, role="viewer"))
+        session.commit()
+        collection_id = collection.id
+        target_id = {
+            "member": member.id,
+            "non_member": non_member.id,
+            "unknown": 999999,
+        }[target_kind]
+        actor = outsider if actor_role == "outsider" else instance
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        client.cookies.set("stashive_session", session_token(database, actor))
+        response = await client.delete(f"/api/collections/{collection_id}/members/{target_id}")
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_member_delete_hides_legacy_and_missing_collections(database: Database) -> None:
+    app.state.database = database
+    with database.session_factory() as session:
+        owner = User(username="owner", password_hash="owner-password-hash")
+        target = User(username="target", password_hash="target-password-hash")
+        legacy = Collection(name="Legacy", type="movies")
+        session.add_all([owner, target, legacy])
+        session.flush()
+        session.add(CollectionMember(collection_id=legacy.id, user_id=target.id, role="viewer"))
+        session.commit()
+        legacy_id, target_id = legacy.id, target.id
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        client.cookies.set("stashive_session", session_token(database, owner))
+        for collection_id in (legacy_id, 999999):
+            response = await client.delete(f"/api/collections/{collection_id}/members/{target_id}")
+            assert response.status_code == 404
+    with database.session_factory() as session:
+        membership = session.scalar(
+            select(CollectionMember).where(
+                CollectionMember.collection_id == legacy_id,
+                CollectionMember.user_id == target_id,
+            )
+        )
+        assert membership is not None
+        assert membership.role == "viewer"
+
+
+@pytest.mark.anyio
+async def test_member_delete_rejects_owner_target_without_changing_ownership(
+    database: Database,
+) -> None:
+    app.state.database = database
+    with database.session_factory() as session:
+        owner = User(username="owner", password_hash="owner-password-hash")
+        session.add(owner)
+        session.flush()
+        collection = Collection(name="Shared", type="movies", owner_user_id=owner.id)
+        session.add(collection)
+        session.commit()
+        collection_id, owner_id = collection.id, owner.id
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        client.cookies.set("stashive_session", session_token(database, owner))
+        response = await client.delete(f"/api/collections/{collection_id}/members/{owner_id}")
+    assert response.status_code == 404
+    with database.session_factory() as session:
+        assert session.get(Collection, collection_id).owner_user_id == owner_id
+        assert (
+            session.scalar(
+                select(CollectionMember).where(
+                    CollectionMember.collection_id == collection_id,
+                    CollectionMember.user_id == owner_id,
+                )
+            )
+            is None
+        )
+
+
+@pytest.mark.anyio
+async def test_member_delete_rejects_non_member_without_changing_data(database: Database) -> None:
+    app.state.database = database
+    with database.session_factory() as session:
+        owner = User(username="owner", password_hash="owner-password-hash")
+        target = User(username="target", password_hash="target-password-hash")
+        session.add_all([owner, target])
+        session.flush()
+        collection = Collection(name="Shared", type="movies", owner_user_id=owner.id)
+        session.add(collection)
+        session.commit()
+        collection_id, target_id = collection.id, target.id
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        client.cookies.set("stashive_session", session_token(database, owner))
+        response = await client.delete(f"/api/collections/{collection_id}/members/{target_id}")
+    assert response.status_code == 404
+    with database.session_factory() as session:
+        assert session.get(Collection, collection_id).owner_user_id == owner.id
+        assert (
+            session.scalar(
+                select(CollectionMember).where(
+                    CollectionMember.collection_id == collection_id,
+                    CollectionMember.user_id == target_id,
+                )
+            )
+            is None
+        )
+
+
+@pytest.mark.anyio
+async def test_member_delete_rejects_unknown_user_without_changing_data(database: Database) -> None:
+    app.state.database = database
+    with database.session_factory() as session:
+        owner = User(username="owner", password_hash="owner-password-hash")
+        member = User(username="member", password_hash="member-password-hash")
+        session.add_all([owner, member])
+        session.flush()
+        collection = Collection(name="Shared", type="movies", owner_user_id=owner.id)
+        session.add(collection)
+        session.flush()
+        session.add(CollectionMember(collection_id=collection.id, user_id=member.id, role="viewer"))
+        session.commit()
+        collection_id = collection.id
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        client.cookies.set("stashive_session", session_token(database, owner))
+        response = await client.delete(f"/api/collections/{collection_id}/members/999999")
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Member not found"}
+    with database.session_factory() as session:
+        memberships = session.scalars(
+            select(CollectionMember).where(CollectionMember.collection_id == collection_id)
+        ).all()
+        assert {(item.user_id, item.role) for item in memberships} == {(member.id, "viewer")}
