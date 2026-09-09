@@ -164,6 +164,17 @@ class AuthenticationService:
         browser_session.revoked_at = utc_now()
         session.commit()
 
+    def csrf_is_valid(
+        self,
+        session: DatabaseSession,
+        *,
+        raw_token: str | None,
+        csrf_token: str | None,
+    ) -> bool:
+        """Return whether an active browser session presents its matching CSRF token."""
+        browser_session = self._active_session(session, raw_token)
+        return browser_session is not None and self._valid_csrf(browser_session, csrf_token)
+
     def _create_session(
         self,
         session: DatabaseSession,

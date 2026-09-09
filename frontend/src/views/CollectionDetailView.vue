@@ -187,8 +187,9 @@ async function removeCollection(): Promise<void> {
           <p>{{ collections.collection.description || 'No description yet.' }}</p>
           <p class="owner-label">Owner: {{ memberDisplayName(collections.collection.owner) }} <span>({{ collections.collection.owner.username }})</span></p>
         </div>
-        <div v-if="canEdit" class="action-row">
-          <button type="button" class="button-secondary" @click="beginEditing">Edit details</button>
+        <div class="action-row">
+          <RouterLink class="button-secondary button-link" :to="{ name: 'locations', params: { collectionId: collections.collection.id } }">Locations</RouterLink>
+          <button v-if="canEdit" type="button" class="button-secondary" @click="beginEditing">Edit details</button>
           <button v-if="canDelete" type="button" class="button-danger" @click="confirmingDelete = true">
             Delete collection
           </button>

@@ -25,6 +25,7 @@ const router = createRouter({
   routes: [
     { path: '/collections', name: 'collections', component: CollectionDetailView },
     { path: '/collections/:collectionId', name: 'collection-detail', component: CollectionDetailView },
+    { path: '/collections/:collectionId/locations', name: 'locations', component: CollectionDetailView },
   ],
 })
 
@@ -66,6 +67,12 @@ describe('CollectionDetailView', () => {
     expect(wrapper.text()).toContain('Blu-rays')
     expect(wrapper.text()).toContain('Your role')
     expect(wrapper.text()).toContain('owner')
+  })
+
+  it('links from collection details to the collection-scoped locations route', async () => {
+    const wrapper = await mountView('viewer')
+
+    expect(wrapper.get('a.button-link').attributes('href')).toBe('/collections/1/locations')
   })
 
   it('shows the owner separately from safe member identity data', async () => {

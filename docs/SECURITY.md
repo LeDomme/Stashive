@@ -64,6 +64,11 @@ inactive account cannot authenticate; disabling it revokes its sessions while pr
 ownership and memberships. Password resets also revoke all existing sessions. User records are
 not hard-deleted, avoiding accidental loss of ownership or membership history.
 
+Location trees inherit the same collection isolation. Reads require `VIEW`; create, edit,
+reparent, and leaf deletion require `EDIT_CONTENT`. Location IDs are resolved only within the
+visible collection scope, so cross-collection IDs do not reveal their existence. Mutating location
+requests use the session CSRF validation alongside authentication.
+
 ## Data isolation
 
 Collection A must never expose:

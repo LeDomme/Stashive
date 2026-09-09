@@ -4,7 +4,7 @@ from sqlalchemy import Date, DateTime, Integer, String, Text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 
-from app.db.models import CatalogEntry, Collection, Edition, Identifier, InventoryItem
+from app.db.models import CatalogEntry, Collection, Edition, Identifier, InventoryItem, Location
 
 
 def test_database_core_uses_only_portable_sqlalchemy_column_types() -> None:
@@ -15,6 +15,7 @@ def test_database_core_uses_only_portable_sqlalchemy_column_types() -> None:
         Edition.__table__,
         Identifier.__table__,
         InventoryItem.__table__,
+        Location.__table__,
     )
 
     for table in tables:

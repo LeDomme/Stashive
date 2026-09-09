@@ -80,6 +80,15 @@ Collection ownership is stored only in `collections.owner_user_id`; `collection_
 only non-owner `admin`, `editor`, and `viewer` rows. On an owner-initiated transfer, the target
 becomes the sole owner and the former owner remains an `admin` member.
 
+## Location tree
+
+T05 implements `locations` as a collection-scoped self-referencing tree. The hierarchy service
+owns parent-scope and cycle validation; the API reuses `CollectionCapability.VIEW` for reads and
+`CollectionCapability.EDIT_CONTENT` for mutations. Consequently Owner, Admin, and Editor can
+manage locations, while Viewer is read-only and Instance Admin is never a collection ACL bypass.
+The API builds a complete tree from one collection-scoped location query; the frontend reloads it
+after mutations instead of maintaining a parallel client-side hierarchy algorithm.
+
 ## Frontend layers
 
 ```text

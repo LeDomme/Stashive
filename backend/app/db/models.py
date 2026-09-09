@@ -42,6 +42,9 @@ class Collection(TimestampedModel, Base):
     members: Mapped[list["CollectionMember"]] = relationship(
         back_populates="collection", cascade="all, delete-orphan", passive_deletes=True
     )
+    locations: Mapped[list["Location"]] = relationship(
+        back_populates="collection", cascade="all, delete-orphan", passive_deletes=True
+    )
 
     catalog_entries: Mapped[list["CatalogEntry"]] = relationship(
         back_populates="collection",
@@ -141,6 +144,29 @@ class InventoryItem(TimestampedModel, Base):
     condition: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     edition: Mapped[Edition] = relationship(back_populates="inventory_items")
+
+
+class Location(TimestampedModel, Base):
+    """Represent one collection-scoped node in a physical location tree."""
+
+    __tablename__ = "locations"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    collection_id: Mapped[int] = mapped_column(
+        ForeignKey("collections.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("locations.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[str] = mapped_column(String(16), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    collection: Mapped[Collection] = relationship(back_populates="locations")
+    parent: Mapped["Location | None"] = relationship(
+        back_populates="children", remote_side="Location.id"
+    )
+    children: Mapped[list["Location"]] = relationship(back_populates="parent", passive_deletes=True)
 
 
 class User(TimestampedModel, Base):
