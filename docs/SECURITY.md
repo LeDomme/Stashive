@@ -58,6 +58,12 @@ Every protected backend operation must establish:
 
 Frontend visibility is not authorization.
 
+Instance administrators can manage local accounts but have no implicit access to a collection.
+Collection access always derives from `owner_user_id` or an explicit collection membership. An
+inactive account cannot authenticate; disabling it revokes its sessions while preserving its
+ownership and memberships. Password resets also revoke all existing sessions. User records are
+not hard-deleted, avoiding accidental loss of ownership or membership history.
+
 ## Data isolation
 
 Collection A must never expose:

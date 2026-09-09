@@ -13,7 +13,7 @@ Includes:
 - Alembic
 - local authentication
 - collections
-- collection roles
+- collection roles (owner/admin/editor/viewer), sharing, and ownership transfer
 - location tree
 - generic title/edition/inventory core
 

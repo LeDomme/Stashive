@@ -72,6 +72,14 @@ Rules:
 - persistence handles query details
 - providers isolate external systems
 
+## Instance administration and collection ACL
+
+Instance administration is limited to local account management. It is not a bypass for collection
+authorization: every collection route resolves the caller's owner or membership role separately.
+Collection ownership is stored only in `collections.owner_user_id`; `collection_members` contains
+only non-owner `admin`, `editor`, and `viewer` rows. On an owner-initiated transfer, the target
+becomes the sole owner and the former owner remains an `admin` member.
+
 ## Frontend layers
 
 ```text

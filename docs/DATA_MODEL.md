@@ -76,6 +76,10 @@ Do not use collection type as a giant switch in unrelated code. Specialized modu
 Links non-owner users to collections. Ownership is represented solely by
 `collections.owner_user_id`; an owner must not also have a member row.
 
+The collection roles are `owner`, `admin`, `editor`, and `viewer`. Only the current owner may
+transfer ownership. A successful transfer removes any target membership, changes
+`owner_user_id`, and retains the former owner as an `admin` member.
+
 Key concepts:
 - collection id
 - user id

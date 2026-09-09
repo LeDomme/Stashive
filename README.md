@@ -13,6 +13,7 @@ The first-class use case is DVD / Blu-ray / UHD Blu-ray management. Board games 
 - Simple single-container deployment as the default target
 - Strong separation between a title/work, an edition/product, and a physical owned copy
 - Collection-level sharing and permissions
+- Instance-admin user management without collection-ACL bypass
 - First instance administrator created through a one-time setup token
 - No public self-registration after setup
 - Hierarchical locations such as `House > Basement > Shelf > Box`
