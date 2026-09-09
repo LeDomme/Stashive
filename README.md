@@ -65,6 +65,53 @@ Optional later:
 
 The current design decisions and open questions are tracked in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
+## Development
+
+Prerequisites: Python 3.12+ with [uv](https://docs.astral.sh/uv/) and Node.js 22+ with npm.
+
+Copy `.env.example` to `.env` if you need to override the default SQLite database location.
+`DATABASE_URL` defaults to `sqlite:///./data/stashive.db` and can later point to a
+PostgreSQL database without changing application code.
+
+Install the backend environment and start the API:
+
+```bash
+uv sync --project backend --all-groups
+uv run --directory backend uvicorn app.main:app --reload --port 8000
+```
+
+In a second terminal, install and run the frontend:
+
+```bash
+npm --prefix frontend install
+npm --prefix frontend run dev
+```
+
+The frontend development server proxies API calls to the backend. Verify the API directly
+at `http://localhost:8000/api/health`.
+
+### Database migrations
+
+T01 contains only the migration infrastructure; it deliberately has no domain schema
+migration. Run migrations from the repository root with:
+
+```bash
+uv run --directory backend alembic upgrade head
+```
+
+Use `DATABASE_URL` to target a different database. Future persistent schema changes must
+include Alembic revisions and migration tests.
+
+### Validation
+
+```bash
+uv run --directory backend ruff check .
+uv run --directory backend pytest
+npm --prefix frontend run typecheck
+npm --prefix frontend run test
+npm --prefix frontend run build
+```
+
 ## License
 
 Stashive is licensed under **AGPL-3.0-only**.
