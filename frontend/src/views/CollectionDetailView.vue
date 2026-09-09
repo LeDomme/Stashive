@@ -189,6 +189,7 @@ async function removeCollection(): Promise<void> {
         </div>
         <div class="action-row">
           <RouterLink class="button-secondary button-link" :to="{ name: 'locations', params: { collectionId: collections.collection.id } }">Locations</RouterLink>
+          <a class="button-secondary button-link" :href="`/collections/${collections.collection.id}/catalog`">Catalog</a>
           <button v-if="canEdit" type="button" class="button-secondary" @click="beginEditing">Edit details</button>
           <button v-if="canDelete" type="button" class="button-danger" @click="confirmingDelete = true">
             Delete collection
