@@ -27,6 +27,11 @@ Key concepts:
 - active state
 - timestamps
 
+Instance administrators manage local accounts after bootstrap. Accounts are retained when access
+is withdrawn: disabling an account revokes its sessions but preserves collection ownership and
+memberships. T04b deliberately provides no hard-delete operation, because deleting accounts would
+complicate collection ownership and remove useful audit context.
+
 ### setup_tokens
 
 First-run bootstrap tokens.

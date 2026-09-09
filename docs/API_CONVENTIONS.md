@@ -17,6 +17,11 @@ GET /api/health
 Authentication endpoints are GET /api/auth/status, POST /api/auth/setup, POST /api/auth/login,
 POST /api/auth/logout, and GET /api/auth/me. There is no public registration endpoint.
 
+Instance administrators manage local accounts through GET/POST `/api/admin/users`, PATCH
+`/api/admin/users/{user_id}`, and POST `/api/admin/users/{user_id}/password`. These endpoints
+never return password hashes, session data, CSRF data, or setup-token data. User removal is
+implemented as disabling an account; no hard-delete endpoint exists.
+
 ## Resource style
 
 Prefer resource-oriented endpoints.

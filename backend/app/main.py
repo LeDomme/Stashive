@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.admin_users import router as admin_users_router
 from app.api.auth import router as auth_router
 from app.api.collections import router as collections_router
 from app.api.health import router as health_router
@@ -29,4 +30,5 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Stashive API", version="0.1.0", lifespan=lifespan)
 app.include_router(health_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
+app.include_router(admin_users_router, prefix="/api")
 app.include_router(collections_router, prefix="/api")
