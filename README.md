@@ -102,6 +102,12 @@ uv run --directory backend alembic upgrade head
 Use `DATABASE_URL` to target a different database. Future persistent schema changes must
 include Alembic revisions and migration tests.
 
+### First-run authentication
+
+When no account exists, the backend logs a one-time setup token. Paste it into the setup page
+to create the first instance administrator. Browser sessions use server-side opaque tokens;
+enable AUTH_COOKIE_SECURE behind HTTPS.
+
 ### Validation
 
 ```bash

@@ -14,6 +14,9 @@ Health:
 GET /api/health
 ```
 
+Authentication endpoints are GET /api/auth/status, POST /api/auth/setup, POST /api/auth/login,
+POST /api/auth/logout, and GET /api/auth/me. There is no public registration endpoint.
+
 ## Resource style
 
 Prefer resource-oriented endpoints.

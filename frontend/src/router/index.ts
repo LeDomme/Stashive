@@ -1,8 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import HealthView from '@/views/HealthView.vue'
+import LoginView from '@/views/LoginView.vue'
+import SetupView from '@/views/SetupView.vue'
+import { useAuthStore } from '@/stores/auth'
 
-export default createRouter({
+const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
@@ -10,5 +13,17 @@ export default createRouter({
       name: 'health',
       component: HealthView,
     },
+    { path: '/login', name: 'login', component: LoginView },
+    { path: '/setup', name: 'setup', component: SetupView },
   ],
 })
+
+router.beforeEach(async (to) => {
+  const auth = useAuthStore()
+  if (!auth.ready) await auth.bootstrap()
+  if (auth.setupRequired && to.name !== 'setup') return { name: 'setup' }
+  if (!auth.setupRequired && !auth.user && to.name !== 'login') return { name: 'login' }
+  if (auth.user && (to.name === 'login' || to.name === 'setup')) return { name: 'health' }
+  return true
+})
+export default router
