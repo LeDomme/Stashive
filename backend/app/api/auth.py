@@ -47,6 +47,23 @@ def current_user_or_401(
     return user
 
 
+def current_user_with_csrf_or_403(
+    request: Request,
+    user: User = Depends(current_user_or_401),
+    session: DatabaseSession = Depends(get_session),
+    service: AuthenticationService = Depends(get_auth_service),
+) -> User:
+    """Require the existing session's CSRF token for a mutating authenticated request."""
+    raw_token = request.cookies.get(get_settings().auth_session_cookie_name)
+    if not service.csrf_is_valid(
+        session,
+        raw_token=raw_token,
+        csrf_token=request.headers.get("X-CSRF-Token"),
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed")
+    return user
+
+
 def _set_auth_cookies(response: Response, raw_token: str, raw_csrf_token: str) -> None:
     settings = get_settings()
     common = {
