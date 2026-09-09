@@ -168,6 +168,12 @@ button:disabled {
   background: transparent;
 }
 
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 .button-danger {
   background: #b42318;
 }
@@ -473,4 +479,55 @@ h1 {
 
 .connection-status[data-state='unavailable'] strong {
   color: #fecaca;
+}
+
+.location-tree {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1.5rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.location-node > .location-tree {
+  margin: 0.8rem 0 0 1.1rem;
+  padding-left: 0.85rem;
+  border-left: 2px solid #cce4da;
+}
+
+.location-node__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #cce4da;
+  border-radius: 0.65rem;
+  background: #fff;
+}
+
+.location-node__description,
+.location-node__hint {
+  margin: 0.4rem 0 0;
+  color: #456258;
+}
+
+.location-node__hint {
+  margin-left: 1rem;
+  font-size: 0.85rem;
+}
+
+.location-node__actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 42rem) {
+  .location-node__content {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .location-node__actions {
+    justify-content: flex-start;
+  }
 }
