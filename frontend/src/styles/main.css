@@ -334,6 +334,82 @@ button:disabled {
   padding: 0.55rem 0.7rem;
 }
 
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.checkbox-label input {
+  width: auto;
+}
+
+.users-panel {
+  margin-top: 2rem;
+}
+
+.users-panel h2 {
+  margin-top: 0;
+}
+
+.admin-user-list {
+  display: grid;
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-user-row {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(10rem, 0.7fr) minmax(18rem, 1.2fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid #dbece4;
+}
+
+.admin-user-row.is-disabled {
+  opacity: 0.65;
+}
+
+.admin-user-row small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #456258;
+}
+
+.user-badges,
+.user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.user-badges span {
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  color: var(--stashive-emerald);
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: #dff7ed;
+}
+
+.inline-form {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.inline-form label {
+  flex: 1;
+}
+
+.success-message {
+  color: var(--stashive-emerald);
+  font-weight: 700;
+}
+
 @media (max-width: 42rem) {
   .application-header,
   .page-heading {
@@ -346,7 +422,9 @@ button:disabled {
   }
 
   .member-row,
-  .member-form {
+  .member-form,
+  .admin-user-row,
+  .inline-form {
     grid-template-columns: 1fr;
     align-items: stretch;
   }

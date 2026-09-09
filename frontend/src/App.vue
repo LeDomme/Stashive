@@ -13,6 +13,7 @@ const auth = useAuthStore()
       <span class="brand-tagline">Physical collections, organized.</span>
       <nav v-if="auth.user" class="application-nav" aria-label="Main navigation">
         <RouterLink to="/collections">Collections</RouterLink>
+        <RouterLink v-if="auth.user.is_instance_admin" to="/admin/users">Users</RouterLink>
       </nav>
     </header>
     <RouterView />
