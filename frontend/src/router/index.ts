@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import HealthView from '@/views/HealthView.vue'
+import CollectionDetailView from '@/views/CollectionDetailView.vue'
+import CollectionsView from '@/views/CollectionsView.vue'
 import LoginView from '@/views/LoginView.vue'
 import SetupView from '@/views/SetupView.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -15,6 +17,12 @@ const router = createRouter({
     },
     { path: '/login', name: 'login', component: LoginView },
     { path: '/setup', name: 'setup', component: SetupView },
+    { path: '/collections', name: 'collections', component: CollectionsView },
+    {
+      path: '/collections/:collectionId',
+      name: 'collection-detail',
+      component: CollectionDetailView,
+    },
   ],
 })
 

@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { RouterLink, RouterView } from 'vue-router'
+
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 </script>
 
 <template>
   <main class="application-shell">
     <header class="application-header">
-      <a class="brand" href="/" aria-label="Stashive home">Stashive</a>
+      <RouterLink class="brand" :to="auth.user ? '/collections' : '/'" aria-label="Stashive home">Stashive</RouterLink>
       <span class="brand-tagline">Physical collections, organized.</span>
+      <nav v-if="auth.user" class="application-nav" aria-label="Main navigation">
+        <RouterLink to="/collections">Collections</RouterLink>
+      </nav>
     </header>
     <RouterView />
   </main>
