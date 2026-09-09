@@ -265,7 +265,7 @@ class InventoryService:
             if recursive:
                 location_ids.update(self._descendant_ids(session, location.id))
             query = query.where(InventoryItem.location_id.in_(location_ids))
-        return list(session.scalars(query.order_by(InventoryItem.id)))
+        return list(session.scalars(query.order_by(InventoryItem.created_at, InventoryItem.id)))
 
     def _collection(self, session: DatabaseSession, collection_id: int) -> Collection:
         collection = session.get(Collection, collection_id)

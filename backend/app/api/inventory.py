@@ -1,13 +1,21 @@
 """Collection-scoped catalog, edition, and identifier endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DatabaseSession
 
 from app.api.auth import current_user_or_401, current_user_with_csrf_or_403, get_session
 from app.api.collections import collection_or_404
 from app.collections.policy import CollectionCapability, permits
-from app.db.models import CatalogEntry, Collection, Edition, Identifier, User
+from app.db.models import (
+    CatalogEntry,
+    Collection,
+    Edition,
+    Identifier,
+    InventoryItem,
+    Location,
+    User,
+)
 from app.inventory.schemas import (
     CatalogEntryCreateInput,
     CatalogEntryResponse,
@@ -18,6 +26,9 @@ from app.inventory.schemas import (
     IdentifierCreateInput,
     IdentifierResponse,
     IdentifierUpdateInput,
+    InventoryItemCreate,
+    InventoryItemResponse,
+    InventoryItemUpdateInput,
 )
 from app.inventory.service import DuplicateIdentifierError, InventoryService
 
@@ -83,6 +94,33 @@ def identifier_error_to_http(error: DuplicateIdentifierError) -> HTTPException:
     if isinstance(error, DuplicateIdentifierError):
         return HTTPException(status_code=409, detail="Identifier already exists for this edition")
     raise error
+
+
+def location_in_collection_or_404(
+    session: DatabaseSession, collection: Collection, location_id: int
+) -> Location:
+    """Resolve a location inside an already visible collection only."""
+    location = session.scalar(
+        select(Location).where(Location.id == location_id, Location.collection_id == collection.id)
+    )
+    if location is None:
+        raise HTTPException(status_code=404, detail="Location not found")
+    return location
+
+
+def item_in_collection_or_404(
+    session: DatabaseSession, collection: Collection, item_id: int
+) -> InventoryItem:
+    """Resolve a physical copy only in the requested collection."""
+    item = session.scalar(
+        select(InventoryItem)
+        .join(InventoryItem.edition)
+        .join(Edition.catalog_entry)
+        .where(InventoryItem.id == item_id, CatalogEntry.collection_id == collection.id)
+    )
+    if item is None:
+        raise HTTPException(status_code=404, detail="Inventory item not found")
+    return item
 
 
 @router.get("/{collection_id}/catalog-entries", response_model=list[CatalogEntryResponse])
@@ -361,3 +399,108 @@ def delete_identifier(
     edition = edition_in_collection_or_404(session, collection, edition_id)
     identifier = identifier_in_edition_or_404(session, edition, identifier_id)
     InventoryService().delete_identifier(session, identifier_id=identifier.id)
+
+
+@router.get("/{collection_id}/inventory-items", response_model=list[InventoryItemResponse])
+def list_inventory_items(
+    collection_id: int,
+    location_id: int | None = Query(default=None, gt=0),
+    include_descendants: bool = True,
+    unassigned: bool = False,
+    session: DatabaseSession = Depends(get_session),
+    user: User = Depends(current_user_or_401),
+) -> list[InventoryItem]:
+    """List copies with an optional scoped location or unassigned filter."""
+    collection, _ = collection_or_404(session, user, collection_id)
+    if location_id is not None and unassigned:
+        raise HTTPException(status_code=422, detail="location_id and unassigned cannot be combined")
+    if location_id is None and not include_descendants:
+        raise HTTPException(status_code=422, detail="include_descendants requires location_id")
+    if location_id is not None:
+        location_in_collection_or_404(session, collection, location_id)
+    return InventoryService().list_inventory(
+        session,
+        collection_id=collection.id,
+        location_id=location_id,
+        recursive=include_descendants,
+        unassigned=unassigned,
+    )
+
+
+@router.post(
+    "/{collection_id}/inventory-items",
+    response_model=InventoryItemResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_inventory_item(
+    collection_id: int,
+    payload: InventoryItemCreate,
+    session: DatabaseSession = Depends(get_session),
+    user: User = Depends(current_user_with_csrf_or_403),
+) -> InventoryItem:
+    """Create exactly one physical copy for an edition in this collection."""
+    collection = editable_collection_or_403(session, user, collection_id)
+    edition_in_collection_or_404(session, collection, payload.edition_id)
+    if payload.location_id is not None:
+        location_in_collection_or_404(session, collection, payload.location_id)
+    return InventoryService().create_inventory_item(
+        session,
+        edition_id=payload.edition_id,
+        condition=payload.condition,
+        notes=payload.notes,
+        location_id=payload.location_id,
+    )
+
+
+@router.get("/{collection_id}/inventory-items/{item_id}", response_model=InventoryItemResponse)
+def get_inventory_item(
+    collection_id: int,
+    item_id: int,
+    session: DatabaseSession = Depends(get_session),
+    user: User = Depends(current_user_or_401),
+) -> InventoryItem:
+    """Get one physical copy without leaking cross-collection IDs."""
+    collection, _ = collection_or_404(session, user, collection_id)
+    return item_in_collection_or_404(session, collection, item_id)
+
+
+@router.patch("/{collection_id}/inventory-items/{item_id}", response_model=InventoryItemResponse)
+def update_inventory_item(
+    collection_id: int,
+    item_id: int,
+    payload: InventoryItemUpdateInput,
+    session: DatabaseSession = Depends(get_session),
+    user: User = Depends(current_user_with_csrf_or_403),
+) -> InventoryItem:
+    """Partially update copy metadata and assign, move, or unassign its location."""
+    collection = editable_collection_or_403(session, user, collection_id)
+    item = item_in_collection_or_404(session, collection, item_id)
+    fields = payload.model_fields_set
+    service = InventoryService()
+    if "location_id" in fields:
+        if payload.location_id is not None:
+            location_in_collection_or_404(session, collection, payload.location_id)
+        item = service.move_inventory_item(
+            session, item_id=item.id, location_id=payload.location_id
+        )
+    if {"condition", "notes"} & fields:
+        item = service.update_inventory_item(
+            session,
+            item_id=item.id,
+            condition=payload.condition if "condition" in fields else item.condition,
+            notes=payload.notes if "notes" in fields else item.notes,
+        )
+    return item
+
+
+@router.delete("/{collection_id}/inventory-items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_inventory_item(
+    collection_id: int,
+    item_id: int,
+    session: DatabaseSession = Depends(get_session),
+    user: User = Depends(current_user_with_csrf_or_403),
+) -> None:
+    """Delete exactly one physical copy."""
+    collection = editable_collection_or_403(session, user, collection_id)
+    item = item_in_collection_or_404(session, collection, item_id)
+    InventoryService().delete_inventory_item(session, item_id=item.id)

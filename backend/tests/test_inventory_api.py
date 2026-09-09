@@ -6,7 +6,15 @@ from httpx import ASGITransport, AsyncClient
 from app.auth.service import AuthenticationService
 from app.config import Settings
 from app.db.database import Database
-from app.db.models import CatalogEntry, Collection, CollectionMember, Edition, Identifier, User
+from app.db.models import (
+    CatalogEntry,
+    Collection,
+    CollectionMember,
+    Edition,
+    Identifier,
+    Location,
+    User,
+)
 from app.main import app
 
 
@@ -316,3 +324,84 @@ async def test_identifier_api_handles_duplicates_updates_deletes_and_privacy(
     assert foreign.status_code == 404 and deleted.status_code == 204
     with database.session_factory() as session:
         assert session.get(Identifier, identifier_id) is None
+
+
+@pytest.mark.anyio
+async def test_inventory_item_api_supports_assignment_moves_filters_and_privacy(
+    database: Database, inventory_context: dict[str, int | dict[str, User]]
+) -> None:
+    collection_id = inventory_context["collection_id"]
+    other_collection_id = inventory_context["other_collection_id"]
+    users = inventory_context["users"]
+    assert (
+        isinstance(collection_id, int)
+        and isinstance(other_collection_id, int)
+        and isinstance(users, dict)
+    )
+    edition_id = add_edition(database, add_entry(database, collection_id))
+    foreign_edition_id = add_edition(database, add_entry(database, other_collection_id, "Private"))
+    with database.session_factory() as session:
+        root = Location(collection_id=collection_id, name="Basement", type="room")
+        foreign = Location(collection_id=other_collection_id, name="Private", type="room")
+        session.add_all([root, foreign])
+        session.flush()
+        child = Location(collection_id=collection_id, parent_id=root.id, name="Shelf", type="shelf")
+        session.add(child)
+        session.commit()
+        root_id, child_id, foreign_location_id = root.id, child.id, foreign.id
+    app.state.database = database
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = authenticate(client, database, users["owner"])
+        first = await client.post(
+            f"/api/collections/{collection_id}/inventory-items",
+            json={"edition_id": edition_id, "condition": "good", "location_id": root_id},
+            headers=headers,
+        )
+        item_id = first.json()["id"]
+        second = await client.post(
+            f"/api/collections/{collection_id}/inventory-items",
+            json={"edition_id": edition_id},
+            headers=headers,
+        )
+        moved = await client.patch(
+            f"/api/collections/{collection_id}/inventory-items/{item_id}",
+            json={"location_id": child_id, "notes": "Moved"},
+            headers=headers,
+        )
+        exact = await client.get(
+            f"/api/collections/{collection_id}/inventory-items?location_id={root_id}&include_descendants=false"
+        )
+        recursive = await client.get(
+            f"/api/collections/{collection_id}/inventory-items?location_id={root_id}"
+        )
+        unassigned = await client.get(
+            f"/api/collections/{collection_id}/inventory-items?unassigned=true"
+        )
+        conflict = await client.get(
+            f"/api/collections/{collection_id}/inventory-items?location_id={root_id}&unassigned=true"
+        )
+        foreign_edition = await client.post(
+            f"/api/collections/{collection_id}/inventory-items",
+            json={"edition_id": foreign_edition_id},
+            headers=headers,
+        )
+        foreign_location = await client.patch(
+            f"/api/collections/{collection_id}/inventory-items/{item_id}",
+            json={"location_id": foreign_location_id},
+            headers=headers,
+        )
+        cleared = await client.patch(
+            f"/api/collections/{collection_id}/inventory-items/{item_id}",
+            json={"location_id": None, "condition": None},
+            headers=headers,
+        )
+    assert first.status_code == 201 and second.status_code == 201
+    assert moved.json()["location_id"] == child_id and moved.json()["notes"] == "Moved"
+    assert exact.json() == [] and [item["id"] for item in recursive.json()] == [item_id]
+    assert [item["id"] for item in unassigned.json()] == [second.json()["id"]]
+    assert (
+        conflict.status_code == 422
+        and foreign_edition.status_code == 404
+        and foreign_location.status_code == 404
+    )
+    assert cleared.json()["location_id"] is None and cleared.json()["condition"] is None

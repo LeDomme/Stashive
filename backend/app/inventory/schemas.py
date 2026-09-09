@@ -1,6 +1,6 @@
 """Transport schemas for collection-scoped catalog, edition, and identifier APIs."""
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -120,3 +120,26 @@ class InventoryItemCreate(BaseModel):
     edition_id: int = Field(gt=0)
     notes: str | None = None
     condition: str | None = Field(default=None, max_length=64)
+    location_id: int | None = Field(default=None, gt=0)
+
+
+class InventoryItemUpdateInput(BaseModel):
+    """Partial input for a physical copy and its optional location."""
+
+    notes: str | None = None
+    condition: str | None = Field(default=None, max_length=64)
+    location_id: int | None = Field(default=None, gt=0)
+
+
+class InventoryItemResponse(BaseModel):
+    """Safe flat representation of one physical copy."""
+
+    id: int
+    edition_id: int
+    condition: str | None
+    notes: str | None
+    location_id: int | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

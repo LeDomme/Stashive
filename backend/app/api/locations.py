@@ -20,6 +20,7 @@ from app.locations.service import (
     InvalidLocationTypeError,
     LocationCycleError,
     LocationHasChildrenError,
+    LocationHasInventoryItemsError,
     LocationHierarchyError,
     LocationHierarchyService,
     LocationNotFoundError,
@@ -63,6 +64,8 @@ def location_error_to_http(error: LocationHierarchyError) -> HTTPException:
         return HTTPException(status_code=409, detail="Location move would create a cycle")
     if isinstance(error, LocationHasChildrenError):
         return HTTPException(status_code=409, detail="Location has child locations")
+    if isinstance(error, LocationHasInventoryItemsError):
+        return HTTPException(status_code=409, detail="Location has assigned inventory items")
     if isinstance(error, (InvalidLocationNameError, InvalidLocationTypeError)):
         return HTTPException(status_code=422, detail="Invalid location input")
     raise error
