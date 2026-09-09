@@ -19,6 +19,7 @@ CORE_TABLES = {
 }
 
 ACL_TABLES = {"collection_members"}
+LOCATION_TABLES = {"locations"}
 
 
 def migration_config(database_url: str) -> Config:
@@ -101,5 +102,61 @@ def test_collections_acl_migration_preserves_ownerless_legacy_collections(
         command.upgrade(config, "head")
         with create_engine(database_url).connect() as connection:
             assert connection.scalar(text("SELECT owner_user_id FROM collections")) is None
+    finally:
+        get_settings.cache_clear()
+
+
+def test_location_tree_migration_preserves_t04_data_and_reverses_cleanly(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'location-tree-migration-test.db'}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    get_settings.cache_clear()
+    config = migration_config(database_url)
+
+    try:
+        command.upgrade(config, "0003_collections_acl")
+        engine = create_engine(database_url)
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO users (username, password_hash, is_instance_admin, is_active) "
+                    "VALUES ('owner', 'hash', 0, 1)"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO collections (owner_user_id, name, type) "
+                    "VALUES (1, 'Films', 'movies')"
+                )
+            )
+        engine.dispose()
+
+        command.upgrade(config, "head")
+        inspector = inspect(create_engine(database_url))
+        assert LOCATION_TABLES.issubset(inspector.get_table_names())
+        location_foreign_keys = {
+            foreign_key["referred_table"] for foreign_key in inspector.get_foreign_keys("locations")
+        }
+        assert location_foreign_keys == {
+            "collections",
+            "locations",
+        }
+        assert {index["name"] for index in inspector.get_indexes("locations")} == {
+            "ix_locations_collection_id",
+            "ix_locations_parent_id",
+        }
+        with create_engine(database_url).connect() as connection:
+            assert connection.scalar(text("SELECT name FROM collections")) == "Films"
+
+        command.downgrade(config, "0003_collections_acl")
+        inspector = inspect(create_engine(database_url))
+        assert LOCATION_TABLES.isdisjoint(inspector.get_table_names())
+        with create_engine(database_url).connect() as connection:
+            assert connection.scalar(text("SELECT name FROM collections")) == "Films"
+
+        command.upgrade(config, "head")
+        assert LOCATION_TABLES.issubset(inspect(create_engine(database_url)).get_table_names())
     finally:
         get_settings.cache_clear()
