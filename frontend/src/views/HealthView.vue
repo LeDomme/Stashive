@@ -2,10 +2,12 @@
 import { onMounted, ref } from 'vue'
 
 import { fetchHealth } from '@/api/health'
+import { useAuthStore } from '@/stores/auth'
 
 type ConnectionState = 'checking' | 'available' | 'unavailable'
 
 const connectionState = ref<ConnectionState>('checking')
+const auth = useAuthStore()
 
 onMounted(async () => {
   try {
@@ -15,6 +17,11 @@ onMounted(async () => {
     connectionState.value = 'unavailable'
   }
 })
+
+async function signOut(): Promise<void> {
+  await auth.signOut()
+  window.location.assign('/login')
+}
 </script>
 
 <template>
@@ -31,5 +38,6 @@ onMounted(async () => {
       <strong v-else-if="connectionState === 'available'">available</strong>
       <strong v-else>unavailable</strong>
     </p>
+    <button v-if="auth.user" type="button" @click="signOut">Sign out</button>
   </section>
 </template>

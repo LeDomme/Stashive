@@ -14,6 +14,9 @@ Never merge:
 
 ### users
 
+T03 creates local users with normalized unique usernames, Argon2 password hashes, active state,
+and an instance-admin flag. Collection membership and roles are deferred.
+
 Represents local Stashive accounts.
 
 Key concepts:

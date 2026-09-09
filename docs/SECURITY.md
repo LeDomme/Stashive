@@ -43,6 +43,11 @@ If cookie-authenticated mutating endpoints are used, include explicit CSRF prote
 
 Do not assume SameSite alone covers every deployment scenario.
 
+T03 uses an opaque HttpOnly session cookie with SameSite=Lax and a separate readable
+CSRF cookie. Mutating authenticated requests send that value in the X-CSRF-Token header;
+the server stores only its hash alongside the session. AUTH_COOKIE_SECURE must be enabled
+behind HTTPS.
+
 ## Authorization
 
 Every protected backend operation must establish:

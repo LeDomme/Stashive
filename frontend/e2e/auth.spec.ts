@@ -1,0 +1,20 @@
+import { expect, test } from '@playwright/test'
+
+test('first-run setup, logout, and login authenticate the administrator', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Create the first administrator.' })).toBeVisible()
+  await page.getByLabel('Setup token').fill('e2e-setup-token')
+  await page.getByLabel('Username').fill('Admin')
+  await page.getByLabel('Password').fill('correct horse battery staple')
+  await page.getByRole('button', { name: 'Create administrator' }).click()
+  await expect(page.getByRole('heading', { name: 'Stashive is ready to grow.' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByRole('heading', { name: 'Sign in to Stashive' })).toBeVisible()
+  await page.getByLabel('Username').fill('admin')
+  await page.getByLabel('Password').fill('correct horse battery staple')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByRole('heading', { name: 'Stashive is ready to grow.' })).toBeVisible()
+  await page.goto('/setup')
+  await expect(page.getByRole('heading', { name: 'Stashive is ready to grow.' })).toBeVisible()
+})
