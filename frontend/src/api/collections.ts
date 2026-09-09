@@ -10,7 +10,22 @@ export interface CollectionSummary {
   role: CollectionRole
 }
 
-export interface CollectionDetail extends CollectionSummary {}
+export interface CollectionOwner {
+  id: number
+  username: string
+  display_name: string | null
+}
+
+export interface CollectionDetail extends CollectionSummary {
+  owner: CollectionOwner
+}
+
+export interface CollectionMember {
+  id: number
+  username: string
+  display_name: string | null
+  role: Exclude<CollectionRole, 'owner'>
+}
 
 export interface CollectionCreatePayload {
   name: string
@@ -19,6 +34,10 @@ export interface CollectionCreatePayload {
 }
 
 export interface CollectionUpdatePayload extends CollectionCreatePayload {}
+export interface MemberPayload {
+  username: string
+  role: CollectionMember['role']
+}
 
 interface CollectionMutationResponse {
   id: number
@@ -48,3 +67,29 @@ export const updateCollection = (
   })
 export const deleteCollection = (collectionId: number): Promise<void> =>
   request(`/api/collections/${collectionId}`, { method: 'DELETE' })
+export const listMembers = (collectionId: number): Promise<CollectionMember[]> =>
+  request(`/api/collections/${collectionId}/members`)
+export const addMember = (collectionId: number, payload: MemberPayload): Promise<void> =>
+  request(`/api/collections/${collectionId}/members`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+export const updateMember = (
+  collectionId: number,
+  member: CollectionMember,
+  role: CollectionMember['role'],
+): Promise<void> =>
+  request(`/api/collections/${collectionId}/members/${member.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: member.username, role }),
+  })
+export const deleteMember = (collectionId: number, memberId: number): Promise<void> =>
+  request(`/api/collections/${collectionId}/members/${memberId}`, { method: 'DELETE' })
+export const transferOwnership = (collectionId: number, username: string): Promise<void> =>
+  request(`/api/collections/${collectionId}/transfer-ownership`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username }),
+  })

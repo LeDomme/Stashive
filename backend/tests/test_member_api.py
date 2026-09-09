@@ -151,7 +151,10 @@ async def test_member_add_allows_owner_and_admin_roles(
         assert response.json() == {"username": "target", "role": member_role}
         members = await client.get(f"/api/collections/{collection_id}/members")
         assert members.status_code == 200
-        assert {"username": "target", "role": member_role} in members.json()
+        assert any(
+            member["username"] == "target" and member["role"] == member_role
+            for member in members.json()
+        )
         assert all(
             not {"password_hash", "csrf_token", "session_token", "setup_token"} & member.keys()
             for member in members.json()
@@ -419,7 +422,10 @@ async def test_member_update_allows_owner_and_admin_role_changes(
         assert response.json() == {"role": new_role}
         members = await client.get(f"/api/collections/{collection_id}/members")
         assert members.status_code == 200
-        assert {"username": "target", "role": new_role} in members.json()
+        assert any(
+            member["username"] == "target" and member["role"] == new_role
+            for member in members.json()
+        )
         assert all(
             not {"password_hash", "csrf_token", "session_token", "setup_token"} & member.keys()
             for member in members.json()
@@ -725,8 +731,10 @@ async def test_member_delete_allows_owner_and_admin_to_remove_members(
         assert response.content == b""
         members = await client.get(f"/api/collections/{collection_id}/members")
         assert members.status_code == 200
-        assert {"username": "target", "role": target_role} not in members.json()
-        assert members.json() == [{"username": "admin", "role": "admin"}]
+        assert not any(member["username"] == "target" for member in members.json())
+        assert [
+            (member["username"], member["role"]) for member in members.json()
+        ] == [("admin", "admin")]
     with database.session_factory() as session:
         assert (
             session.scalar(

@@ -73,7 +73,8 @@ Do not use collection type as a giant switch in unrelated code. Specialized modu
 
 ### collection_members
 
-Links users to collections.
+Links non-owner users to collections. Ownership is represented solely by
+`collections.owner_user_id`; an owner must not also have a member row.
 
 Key concepts:
 - collection id
@@ -85,7 +86,6 @@ Unique:
 - collection + user
 
 Roles:
-- owner
 - admin
 - editor
 - viewer

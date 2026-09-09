@@ -104,6 +104,11 @@ def get_collection(
         "type": collection.type,
         "description": collection.description,
         "role": role,
+        "owner": {
+            "id": collection.owner.id,
+            "username": collection.owner.username,
+            "display_name": collection.owner.display_name,
+        },
     }
 
 
@@ -150,7 +155,15 @@ def list_members(
         .join(User)
         .where(CollectionMember.collection_id == collection.id)
     ).all()
-    return [{"username": member_user.username, "role": member.role} for member, member_user in rows]
+    return [
+        {
+            "id": member_user.id,
+            "username": member_user.username,
+            "display_name": member_user.display_name,
+            "role": member.role,
+        }
+        for member, member_user in rows
+    ]
 
 
 @router.post("/{collection_id}/members", status_code=status.HTTP_201_CREATED)

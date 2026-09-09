@@ -259,6 +259,81 @@ button:disabled {
   border-color: #efb0a9;
 }
 
+.owner-label {
+  margin-top: 0.75rem;
+  color: #456258;
+  font-weight: 700;
+}
+
+.owner-label span,
+.member-row span {
+  font-weight: 400;
+}
+
+.members-panel,
+.transfer-panel {
+  margin-top: 2rem;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.section-heading h2,
+.transfer-panel h2 {
+  margin: 0.35rem 0 1rem;
+}
+
+.member-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.member-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 10rem) auto;
+  align-items: end;
+  gap: 0.75rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid #dbece4;
+}
+
+.member-role {
+  font-size: 0.85rem;
+}
+
+.member-role select {
+  min-width: 7rem;
+}
+
+.member-form {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(8rem, 10rem) auto;
+  align-items: end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #dbece4;
+}
+
+.member-form h3 {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.member-confirmation {
+  margin-top: 1rem;
+}
+
+.button-compact {
+  padding: 0.55rem 0.7rem;
+}
+
 @media (max-width: 42rem) {
   .application-header,
   .page-heading {
@@ -268,6 +343,12 @@ button:disabled {
 
   .application-nav {
     margin-left: 0;
+  }
+
+  .member-row,
+  .member-form {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 }
 

@@ -125,6 +125,35 @@ async def test_collection_crud_acl(database: Database, users: dict[str, User]) -
 
 
 @pytest.mark.anyio
+async def test_collection_detail_returns_safe_owner_identity(database: Database) -> None:
+    app.state.database = database
+    with database.session_factory() as session:
+        owner = User(
+            username="owner",
+            display_name="Collection Owner",
+            password_hash=password_hasher.hash("password"),
+        )
+        session.add(owner)
+        session.flush()
+        collection = Collection(name="Private", type="movies", owner_user_id=owner.id)
+        session.add(collection)
+        session.commit()
+        collection_id, owner_id = collection.id, owner.id
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        client.cookies.set("stashive_session", session_token(database, owner))
+        response = await client.get(f"/api/collections/{collection_id}")
+    assert response.status_code == 200
+    assert response.json()["owner"] == {
+        "id": owner_id,
+        "username": "owner",
+        "display_name": "Collection Owner",
+    }
+    assert not {"password_hash", "session_token", "csrf_token", "setup_token"} & response.json()[
+        "owner"
+    ].keys()
+
+
+@pytest.mark.anyio
 @pytest.mark.parametrize(
     ("actor", "method", "expected"),
     [

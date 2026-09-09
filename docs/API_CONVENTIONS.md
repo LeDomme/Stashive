@@ -22,6 +22,10 @@ Instance administrators manage local accounts through GET/POST `/api/admin/users
 never return password hashes, session data, CSRF data, or setup-token data. User removal is
 implemented as disabling an account; no hard-delete endpoint exists.
 
+Collection detail responses include safe owner identity data (`id`, `username`, and optional
+`display_name`). Collection member list responses expose the same safe identity data plus the
+collection role, allowing clients to manage the listed non-owner members without exposing secrets.
+
 ## Resource style
 
 Prefer resource-oriented endpoints.
