@@ -15,5 +15,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function signIn(username: string, password: string): Promise<void> { user.value = await api.login(username, password); setupRequired.value = false }
   async function completeSetup(token: string, username: string, displayName: string, password: string): Promise<void> { user.value = await api.setup(token, username, displayName, password); setupRequired.value = false }
   async function signOut(): Promise<void> { await api.logout(); user.value = null }
-  return { user, setupRequired, ready, bootstrap, signIn, completeSetup, signOut }
+  async function refreshUser(): Promise<void> { user.value = await api.fetchCurrentUser() }
+  function clearAuth(): void { user.value = null }
+  return { user, setupRequired, ready, bootstrap, signIn, completeSetup, signOut, refreshUser, clearAuth }
 })

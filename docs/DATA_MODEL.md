@@ -27,6 +27,11 @@ Key concepts:
 - active state
 - timestamps
 
+Instance administrators manage local accounts after bootstrap. Accounts are retained when access
+is withdrawn: disabling an account revokes its sessions but preserves collection ownership and
+memberships. T04b deliberately provides no hard-delete operation, because deleting accounts would
+complicate collection ownership and remove useful audit context.
+
 ### setup_tokens
 
 First-run bootstrap tokens.
@@ -68,7 +73,12 @@ Do not use collection type as a giant switch in unrelated code. Specialized modu
 
 ### collection_members
 
-Links users to collections.
+Links non-owner users to collections. Ownership is represented solely by
+`collections.owner_user_id`; an owner must not also have a member row.
+
+The collection roles are `owner`, `admin`, `editor`, and `viewer`. Only the current owner may
+transfer ownership. A successful transfer removes any target membership, changes
+`owner_user_id`, and retains the former owner as an `admin` member.
 
 Key concepts:
 - collection id
@@ -80,7 +90,6 @@ Unique:
 - collection + user
 
 Roles:
-- owner
 - admin
 - editor
 - viewer

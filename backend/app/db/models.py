@@ -30,9 +30,18 @@ class Collection(TimestampedModel, Base):
     __tablename__ = "collections"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    owner_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    owner: Mapped["User | None"] = relationship(back_populates="owned_collections")
+    members: Mapped[list["CollectionMember"]] = relationship(
+        back_populates="collection", cascade="all, delete-orphan", passive_deletes=True
+    )
 
     catalog_entries: Mapped[list["CatalogEntry"]] = relationship(
         back_populates="collection",
@@ -151,6 +160,30 @@ class User(TimestampedModel, Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    owned_collections: Mapped[list[Collection]] = relationship(back_populates="owner")
+    collection_memberships: Mapped[list["CollectionMember"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+
+class CollectionMember(TimestampedModel, Base):
+    """Represent a non-owner collection membership."""
+
+    __tablename__ = "collection_members"
+    __table_args__ = (
+        UniqueConstraint("collection_id", "user_id", name="uq_collection_members_user"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    collection_id: Mapped[int] = mapped_column(
+        ForeignKey("collections.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    collection: Mapped[Collection] = relationship(back_populates="members")
+    user: Mapped[User] = relationship(back_populates="collection_memberships")
 
 
 class SetupToken(TimestampedModel, Base):

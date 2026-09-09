@@ -134,3 +134,18 @@ Collection settings
 ```
 
 No resource outside the shared collection should become visible.
+
+Only collection owners may transfer ownership. The selected existing user becomes owner, is not
+also shown as a normal member, and the previous owner remains an admin member.
+
+## 9. Instance user management
+
+```text
+Admin > Users
+-> create local user / promote or demote instance admin
+-> disable or enable account
+-> reset password
+```
+
+There is no public registration after setup and no hard-delete flow. Disable and password reset
+end existing sessions; collection ownership and memberships remain intact.

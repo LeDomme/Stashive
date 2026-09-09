@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import HealthView from './HealthView.vue'
@@ -16,7 +17,7 @@ it('shows an available API connection after a successful health check', async ()
     }),
   )
 
-  const wrapper = mount(HealthView)
+  const wrapper = mount(HealthView, { global: { plugins: [createPinia()] } })
   await flushPromises()
 
   expect(wrapper.get('[data-state]').attributes('data-state')).toBe('available')
