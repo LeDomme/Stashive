@@ -22,6 +22,7 @@ Milestone: v0.1
 
 Implement the first durable generic tables only:
 - users shell if required for foreign keys, otherwise defer to T03
+- structural collections without ownership or ACLs
 - catalog entries
 - editions
 - inventory items

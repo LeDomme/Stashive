@@ -47,9 +47,11 @@ Rules:
 
 Represents a user-visible collection.
 
+T02 introduces only the structural collection root. Ownership, members, roles, and
+sharing are intentionally deferred to the authentication and collection ACL milestones.
+
 Key concepts:
 - id
-- owner user id
 - name
 - type
 - description
@@ -141,7 +143,6 @@ Represents one owned physical copy.
 Key concepts:
 - id
 - edition id
-- location id nullable
 - condition optional
 - notes optional
 - acquired_at optional later
@@ -149,6 +150,9 @@ Key concepts:
 - timestamps
 
 Multiple inventory items may reference the same edition.
+
+Location assignment is intentionally deferred until the collection-scoped locations
+table is introduced.
 
 ## Locations
 
