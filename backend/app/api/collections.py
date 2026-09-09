@@ -1,7 +1,7 @@
 """Collection CRUD with central collection-local authorization."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session as DatabaseSession
 
@@ -25,6 +25,15 @@ class MemberInput(BaseModel):
 
 class OwnershipTransferInput(BaseModel):
     username: str = Field(min_length=1)
+
+    @field_validator("username")
+    @classmethod
+    def username_must_not_be_blank(cls, value: str) -> str:
+        """Normalize the transfer target and reject whitespace-only usernames."""
+        username = value.strip()
+        if not username:
+            raise ValueError("Username must not be blank")
+        return username
 
 
 def collection_or_404(
@@ -227,8 +236,10 @@ def transfer_ownership(
     target = session.scalar(
         select(User).where(User.username == payload.username.strip().casefold())
     )
-    if target is None or target.id == user.id:
+    if target is None:
         raise HTTPException(status_code=404, detail="User not found")
+    if target.id == user.id:
+        raise HTTPException(status_code=409, detail="Ownership is already assigned to this user")
     target_member = session.scalar(
         select(CollectionMember).where(
             CollectionMember.collection_id == collection.id, CollectionMember.user_id == target.id
