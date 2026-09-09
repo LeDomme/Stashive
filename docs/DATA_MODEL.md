@@ -163,23 +163,22 @@ Key concepts:
 
 Multiple inventory items may reference the same edition.
 
-Location assignment is intentionally deferred until the collection-scoped locations
-table is introduced.
+Location assignment is intentionally deferred to T06. T05 deliberately adds no
+`inventory_items.location_id` relation.
 
 ## Locations
 
 ### locations
 
-Collection-scoped in the MVP.
+Implemented in T05 as a collection-scoped hierarchy with arbitrary depth.
 
 Key concepts:
 - id
-- collection id
-- parent id nullable
+- collection_id
+- parent_id nullable (a null parent is a root)
 - name
 - type
 - description optional
-- sort order optional
 - timestamps
 
 Types:
@@ -191,10 +190,17 @@ Types:
 - other
 
 Rules:
-- no cycles
-- parent must belong to same collection
-- authorization derives from collection access
-- deleting non-empty locations must be explicitly defined
+- parent must belong to the same collection
+- no self-parenting or direct/indirect cycles
+- reparenting uses `parent_id`; a child can become a root and a root can become a child
+- names are not required to be unique
+- leaf locations may be deleted; a location with children is rejected with conflict (409)
+- no recursive subtree deletion exists; deleting a collection cascades its entire tree
+- authorization derives from collection access: Owner, Admin, and Editor can edit;
+  Viewer can read; an Instance Admin has no collection ACL bypass
+
+T05 has no inventory relation, item move, location item filter, or `sort_order`.
+Those inventory-location concerns are deferred to T06.
 
 Open future decision:
 - whether locations should eventually be shareable across collections

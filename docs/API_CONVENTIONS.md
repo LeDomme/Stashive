@@ -40,12 +40,20 @@ PATCH  /api/collections/{collection_id}
 
 GET    /api/collections/{collection_id}/locations
 POST   /api/collections/{collection_id}/locations
+PATCH  /api/collections/{collection_id}/locations/{location_id}
+DELETE /api/collections/{collection_id}/locations/{location_id}
 
 GET    /api/inventory/{inventory_item_id}
 PATCH  /api/inventory/{inventory_item_id}
 ```
 
 Final endpoint design may evolve with implementation.
+
+Location GET returns the complete nested tree for a collection. Roots and children are ordered
+case-insensitively by name, then by ID. Create accepts `name`, `type`, optional `description`,
+and optional `parent_id`. PATCH is partial: `parent_id: null` moves a node to the root and
+`description: null` removes its description. Location IDs are resolved within the requested
+collection scope. A non-leaf delete returns 409; recursive subtree deletion is not available.
 
 ## Pagination
 

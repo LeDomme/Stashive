@@ -17,6 +17,10 @@ Includes:
 - location tree
 - generic title/edition/inventory core
 
+T05 delivers the collection-scoped location tree only. T06 will add inventory-item-to-location
+assignment, inventory moves, and location-based inventory filtering; these are intentionally not
+part of the T05 schema or UI.
+
 Exit criteria:
 - multiuser permissions work
 - title/edition/copy separation works

@@ -47,6 +47,21 @@ Add item
 
 Avoid forcing provider lookup for manual entry.
 
+## Location tree
+
+```text
+Collection details -> Locations
+-> create a root location
+-> add children for physical nesting
+-> edit metadata or select a different parent
+-> select No parent / Root to promote a child
+-> confirm leaf deletion when no children remain
+```
+
+Owner, Admin, and Editor can manage the tree. Viewer can read it only. Parent selection omits the
+current node and its descendants as a cycle-prevention convenience; server-side validation remains
+authoritative. T05 does not yet assign inventory items to locations.
+
 ## 4. Barcode batch intake
 
 ```text
