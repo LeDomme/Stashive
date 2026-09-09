@@ -95,3 +95,18 @@ async def test_member_api_acl(database: Database) -> None:
             )
             is None
         )
+
+
+@pytest.mark.anyio
+async def test_member_list_legacy_and_not_found_are_hidden(database: Database) -> None:
+    app.state.database = database
+    with database.session_factory() as session:
+        owner = User(username="owner", password_hash="hash")
+        legacy = Collection(name="Legacy", type="movies")
+        session.add_all([owner, legacy])
+        session.commit()
+        legacy_id = legacy.id
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        client.cookies.set("stashive_session", session_token(database, owner))
+        assert (await client.get(f"/api/collections/{legacy_id}/members")).status_code == 404
+        assert (await client.get("/api/collections/999999/members")).status_code == 404
