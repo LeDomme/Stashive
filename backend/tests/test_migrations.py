@@ -160,3 +160,67 @@ def test_location_tree_migration_preserves_t04_data_and_reverses_cleanly(
         assert LOCATION_TABLES.issubset(inspect(create_engine(database_url)).get_table_names())
     finally:
         get_settings.cache_clear()
+
+
+def test_inventory_location_migration_preserves_items_and_reverses_cleanly(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'inventory-location-migration-test.db'}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    get_settings.cache_clear()
+    config = migration_config(database_url)
+
+    try:
+        command.upgrade(config, "0004_location_tree")
+        engine = create_engine(database_url)
+        with engine.begin() as connection:
+            connection.execute(
+                text("INSERT INTO collections (name, type) VALUES ('Films', 'movies')")
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO catalog_entries (collection_id, display_title, type) "
+                    "VALUES (1, 'Alien', 'movie')"
+                )
+            )
+            connection.execute(
+                text("INSERT INTO editions (catalog_entry_id, display_name) VALUES (1, 'Blu-ray')")
+            )
+            connection.execute(text("INSERT INTO inventory_items (edition_id) VALUES (1)"))
+        engine.dispose()
+
+        command.upgrade(config, "head")
+        inspector = inspect(create_engine(database_url))
+        location_column = next(
+            column
+            for column in inspector.get_columns("inventory_items")
+            if column["name"] == "location_id"
+        )
+        assert location_column["nullable"] is True
+        assert {
+            foreign_key["referred_table"]
+            for foreign_key in inspector.get_foreign_keys("inventory_items")
+        } == {
+            "editions",
+            "locations",
+        }
+        assert {index["name"] for index in inspector.get_indexes("inventory_items")} == {
+            "ix_inventory_items_edition_id",
+            "ix_inventory_items_location_id",
+        }
+        with create_engine(database_url).connect() as connection:
+            assert connection.scalar(text("SELECT location_id FROM inventory_items")) is None
+
+        command.downgrade(config, "0004_location_tree")
+        assert "location_id" not in {
+            column["name"]
+            for column in inspect(create_engine(database_url)).get_columns("inventory_items")
+        }
+        command.upgrade(config, "head")
+        assert "location_id" in {
+            column["name"]
+            for column in inspect(create_engine(database_url)).get_columns("inventory_items")
+        }
+    finally:
+        get_settings.cache_clear()
