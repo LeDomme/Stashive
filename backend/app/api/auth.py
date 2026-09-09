@@ -1,7 +1,6 @@
 """Cookie-based local authentication endpoints."""
 
 from collections import defaultdict, deque
-from collections.abc import Deque
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -15,7 +14,7 @@ from app.db.models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-_setup_attempts: dict[str, Deque[datetime]] = defaultdict(deque)
+_setup_attempts: dict[str, deque[datetime]] = defaultdict(deque)
 _setup_attempt_window = timedelta(minutes=10)
 _setup_attempt_limit = 5
 
@@ -182,4 +181,5 @@ def logout(
             detail="Not authenticated",
         ) from error
     _clear_auth_cookies(response)
+    response.status_code = status.HTTP_204_NO_CONTENT
     return response
