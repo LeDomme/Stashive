@@ -33,9 +33,10 @@ test('generic inventory workflow supports duplicate copies and location states',
   await page.getByLabel('Edition').selectOption({ label: 'T06 Browser Title — T06 Browser Edition' })
   await page.getByRole('button', { name: 'Create physical copy' }).click()
   await expect(page.getByText('T06 Browser Title')).toHaveCount(2)
-  await expect(page.getByText('Unassigned', { exact: true })).toHaveCount(2)
+  const titleCopies = page.locator('.inventory-list > li').filter({ hasText: 'T06 Browser Title' })
+  await expect(titleCopies.getByText('Unassigned', { exact: true })).toHaveCount(2)
 
-  const firstCopy = page.locator('.inventory-list > li').filter({ hasText: 'T06 Browser Title' }).first()
+  const firstCopy = titleCopies.first()
   await firstCopy.getByRole('button', { name: 'Assign location' }).click()
   await firstCopy.getByLabel('Location').selectOption({ index: 1 })
   await firstCopy.getByRole('button', { name: 'Save location' }).click()
