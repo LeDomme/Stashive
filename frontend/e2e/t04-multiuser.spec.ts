@@ -143,6 +143,7 @@ test.describe.serial('T04 multiuser collection access', () => {
     const managedRow = page.getByRole('listitem').filter({ hasText: '(manageduser)' })
     await managedRow.getByRole('button', { name: 'Disable' }).click()
     await page.getByRole('button', { name: 'Confirm disable' }).click()
+    await expect(managedRow.getByRole('button', { name: 'Enable' })).toBeVisible()
     await login(page, 'manageduser', password, false)
     await expect(page.getByText('Login failed. Check your credentials and try again.')).toBeVisible()
 
