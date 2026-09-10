@@ -43,8 +43,11 @@ POST   /api/collections/{collection_id}/locations
 PATCH  /api/collections/{collection_id}/locations/{location_id}
 DELETE /api/collections/{collection_id}/locations/{location_id}
 
-GET    /api/inventory/{inventory_item_id}
-PATCH  /api/inventory/{inventory_item_id}
+GET    /api/collections/{collection_id}/inventory-items
+POST   /api/collections/{collection_id}/inventory-items
+GET    /api/collections/{collection_id}/inventory-items/{item_id}
+PATCH  /api/collections/{collection_id}/inventory-items/{item_id}
+DELETE /api/collections/{collection_id}/inventory-items/{item_id}
 ```
 
 Final endpoint design may evolve with implementation.
@@ -72,6 +75,11 @@ Examples:
 - location
 - rip status
 - loan status
+
+Inventory filtering uses `location_id`: it includes that location and descendants by
+default. Set `include_descendants=false` for an exact location. `unassigned=true`
+returns items without a location; it cannot be combined with `location_id`, and
+`include_descendants` requires `location_id`.
 
 ## Errors
 

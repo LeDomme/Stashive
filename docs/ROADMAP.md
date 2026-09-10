@@ -17,15 +17,17 @@ Includes:
 - location tree
 - generic title/edition/inventory core
 
-T05 delivers the collection-scoped location tree only. T06 will add inventory-item-to-location
-assignment, inventory moves, and location-based inventory filtering; these are intentionally not
-part of the T05 schema or UI.
+T06 completes the generic inventory core with inventory-item-to-location assignment,
+moves, unassignment, and recursive/exact location filtering.
 
 Exit criteria:
 - multiuser permissions work
 - title/edition/copy separation works
 - migrations are reliable
 - core UI is usable
+
+Before T07, T06e delivers preview container packaging: a multi-stage image, persistent
+SQLite data, startup migrations, Compose, healthcheck, smoke test, and GHCR publishing.
 
 ## v0.2 — Movies
 

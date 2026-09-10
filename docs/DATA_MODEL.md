@@ -163,8 +163,9 @@ Key concepts:
 
 Multiple inventory items may reference the same edition.
 
-Location assignment is intentionally deferred to T06. T05 deliberately adds no
-`inventory_items.location_id` relation.
+Each inventory item represents exactly one physical copy; there is no quantity field.
+`location_id` is nullable: an item may be unassigned or assigned to exactly one
+location in its collection.
 
 ## Locations
 
@@ -194,13 +195,15 @@ Rules:
 - no self-parenting or direct/indirect cycles
 - reparenting uses `parent_id`; a child can become a root and a root can become a child
 - names are not required to be unique
-- leaf locations may be deleted; a location with children is rejected with conflict (409)
+- leaf locations may be deleted; a location with children or directly assigned inventory
+  items is rejected with conflict (409). Deletes never automatically unassign, move, or
+  cascade inventory items.
 - no recursive subtree deletion exists; deleting a collection cascades its entire tree
 - authorization derives from collection access: Owner, Admin, and Editor can edit;
   Viewer can read; an Instance Admin has no collection ACL bypass
 
-T05 has no inventory relation, item move, location item filter, or `sort_order`.
-Those inventory-location concerns are deferred to T06.
+T06 adds collection-scoped inventory assignment, move, unassign, and filtering. A
+location filter includes descendants by default; exact filtering is explicit.
 
 Open future decision:
 - whether locations should eventually be shareable across collections
