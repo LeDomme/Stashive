@@ -17,11 +17,13 @@ from app.api.locations import router as locations_router
 from app.auth.service import AuthenticationService
 from app.config import get_settings
 from app.db.database import Database
+from app.logging_config import configure_application_logging
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Initialize and dispose infrastructure owned by the application."""
+    configure_application_logging()
     settings = get_settings()
     app.state.database = Database(settings.database_url, settings.sqlite_busy_timeout_ms)
     try:
