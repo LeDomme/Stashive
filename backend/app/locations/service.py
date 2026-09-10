@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session as DatabaseSession
 
-from app.db.models import Collection, Location
+from app.db.models import Collection, InventoryItem, Location
 
 LOCATION_TYPES = frozenset({"room", "cabinet", "shelf", "box", "drawer", "other"})
 
@@ -38,6 +38,10 @@ class LocationCycleError(LocationHierarchyError):
 
 class LocationHasChildrenError(LocationHierarchyError):
     """Raised when trying to delete a non-leaf location."""
+
+
+class LocationHasInventoryItemsError(LocationHierarchyError):
+    """Raised when trying to delete a location with directly assigned physical copies."""
 
 
 class InvalidLocationTypeError(LocationHierarchyError):
@@ -132,6 +136,11 @@ class LocationHierarchyService:
         )
         if has_children is not None:
             raise LocationHasChildrenError
+        has_inventory_items = session.scalar(
+            select(InventoryItem.id).where(InventoryItem.location_id == location.id).limit(1)
+        )
+        if has_inventory_items is not None:
+            raise LocationHasInventoryItemsError
         session.delete(location)
         session.commit()
 

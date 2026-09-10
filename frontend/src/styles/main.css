@@ -204,6 +204,16 @@ button:disabled {
   list-style: none;
 }
 
+.inventory-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.inventory-list h2 { margin-top: 0; }
+
 .collection-card {
   border: 1px solid #cce4da;
   border-radius: 0.8rem;

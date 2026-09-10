@@ -140,10 +140,16 @@ class InventoryItem(TimestampedModel, Base):
         nullable=False,
         index=True,
     )
+    location_id: Mapped[int | None] = mapped_column(
+        ForeignKey("locations.id"),
+        nullable=True,
+        index=True,
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     condition: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     edition: Mapped[Edition] = relationship(back_populates="inventory_items")
+    location: Mapped["Location | None"] = relationship(back_populates="inventory_items")
 
 
 class Location(TimestampedModel, Base):
@@ -166,7 +172,11 @@ class Location(TimestampedModel, Base):
     parent: Mapped["Location | None"] = relationship(
         back_populates="children", remote_side="Location.id"
     )
-    children: Mapped[list["Location"]] = relationship(back_populates="parent", passive_deletes=True)
+    children: Mapped[list["Location"]] = relationship(
+        back_populates="parent",
+        passive_deletes=True,
+    )
+    inventory_items: Mapped[list[InventoryItem]] = relationship(back_populates="location")
 
 
 class User(TimestampedModel, Base):

@@ -132,6 +132,14 @@ Acceptance:
 - move item endpoint
 - list/filter by location
 
+Status: complete. T06 provides collection-scoped catalog entries, editions, identifiers, physical copies, and location assignment/filtering.
+
+## T06e — Preview Container Packaging
+
+Milestone: after T06, before T07
+
+Implement a preview-ready multi-stage Docker image that builds the Vue frontend, persists `/app/data` including SQLite, runs Alembic migrations at startup, exposes `/api/health`, and includes minimal Docker Compose, container smoke coverage, and a GitHub Actions build/push workflow for `ghcr.io/ledomme/stashive`.
+
 ## T07 — Movie Domain
 
 Milestone: v0.2

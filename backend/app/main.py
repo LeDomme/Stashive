@@ -9,6 +9,7 @@ from app.api.admin_users import router as admin_users_router
 from app.api.auth import router as auth_router
 from app.api.collections import router as collections_router
 from app.api.health import router as health_router
+from app.api.inventory import router as inventory_router
 from app.api.locations import router as locations_router
 from app.auth.service import AuthenticationService
 from app.config import get_settings
@@ -34,3 +35,4 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(admin_users_router, prefix="/api")
 app.include_router(collections_router, prefix="/api")
 app.include_router(locations_router, prefix="/api")
+app.include_router(inventory_router, prefix="/api")
