@@ -1,10 +1,10 @@
 import { request } from '@/api/client'
 
 export interface CatalogEntry { id:number; collection_id:number; display_title:string; type:string; sort_title:string|null; notes:string|null }
-export interface Edition { id:number; catalog_entry_id:number; display_name:string; release_date:string|null; publisher:string|null; region:string|null; language:string|null }
+export interface Edition { id:number; catalog_entry_id:number; display_name:string; media_format:string|null; release_date:string|null; publisher:string|null; region:string|null; language:string|null }
 export interface Identifier { id:number; edition_id:number; type:string; value:string; source:string|null }
 export type CatalogPayload = Partial<Pick<CatalogEntry, 'display_title'|'type'|'sort_title'|'notes'>>
-export type EditionPayload = Partial<Pick<Edition, 'display_name'|'release_date'|'publisher'|'region'|'language'>>
+export type EditionPayload = Partial<Pick<Edition, 'display_name'|'media_format'|'release_date'|'publisher'|'region'|'language'>>
 export type IdentifierPayload = Partial<Pick<Identifier, 'type'|'value'|'source'>>
 const json = <T>(path:string, method:string, body?:object) => request<T>(path,{method,headers:{'Content-Type':'application/json'},body:body ? JSON.stringify(body):undefined})
 export const listCatalog=(c:number)=>request<CatalogEntry[]>(`/api/collections/${c}/catalog-entries`)

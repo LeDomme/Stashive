@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DatabaseSession
+from sqlalchemy.orm import selectinload
 
 from app.api.auth import current_user_or_401, current_user_with_csrf_or_403, get_session
 from app.api.collections import collection_or_404
@@ -29,6 +30,8 @@ from app.inventory.schemas import (
     InventoryItemCreate,
     InventoryItemResponse,
     InventoryItemUpdateInput,
+    LibraryTitleDetail,
+    LibraryTitleSummary,
 )
 from app.inventory.service import DuplicateIdentifierError, InventoryService
 
@@ -121,6 +124,29 @@ def item_in_collection_or_404(
     if item is None:
         raise HTTPException(status_code=404, detail="Inventory item not found")
     return item
+
+
+@router.get("/{collection_id}/library", response_model=list[LibraryTitleSummary])
+def list_library(
+    collection_id: int, session: DatabaseSession = Depends(get_session), user: User = Depends(current_user_or_401)  # noqa: E501
+) -> list[LibraryTitleSummary]:
+    """Return a collection-scoped, title-centric read model without N+1 loading."""
+    collection_or_404(session, user, collection_id)
+    query = select(CatalogEntry).where(CatalogEntry.collection_id == collection_id).options(
+        selectinload(CatalogEntry.editions).selectinload(Edition.inventory_items)
+    ).order_by(func.lower(func.coalesce(CatalogEntry.sort_title, CatalogEntry.display_title)), CatalogEntry.id)  # noqa: E501
+    entries = session.scalars(query).all()
+    return [LibraryTitleSummary(id=entry.id, catalog_entry_id=entry.id, display_title=entry.display_title, sort_title=entry.sort_title, type=entry.type, edition_count=len(entry.editions), copy_count=sum(len(edition.inventory_items) for edition in entry.editions), media_formats=sorted({edition.media_format for edition in entry.editions if edition.media_format}, key=str.lower)) for entry in entries]  # noqa: E501
+
+
+@router.get("/{collection_id}/library/{entry_id}", response_model=LibraryTitleDetail)
+def get_library_title(collection_id: int, entry_id: int, session: DatabaseSession = Depends(get_session), user: User = Depends(current_user_or_401)) -> LibraryTitleDetail:  # noqa: E501
+    """Return one collection-scoped title with its editions, identifiers, and copies."""
+    collection, _ = collection_or_404(session, user, collection_id)
+    entry = session.scalar(select(CatalogEntry).where(CatalogEntry.id == entry_id, CatalogEntry.collection_id == collection.id).options(selectinload(CatalogEntry.editions).selectinload(Edition.identifiers), selectinload(CatalogEntry.editions).selectinload(Edition.inventory_items)))  # noqa: E501
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Catalog entry not found")
+    return LibraryTitleDetail(catalog_entry=entry, editions=[{"id": edition.id, "catalog_entry_id": edition.catalog_entry_id, "display_name": edition.display_name, "media_format": edition.media_format, "release_date": edition.release_date, "publisher": edition.publisher, "region": edition.region, "language": edition.language, "identifiers": edition.identifiers, "copies": edition.inventory_items} for edition in entry.editions])  # noqa: E501
 
 
 @router.get("/{collection_id}/catalog-entries", response_model=list[CatalogEntryResponse])
@@ -252,6 +278,7 @@ def create_edition(
         session,
         catalog_entry_id=entry.id,
         display_name=payload.display_name,
+        media_format=payload.media_format,
         release_date=payload.release_date,
         publisher=payload.publisher,
         region=payload.region,
@@ -287,6 +314,7 @@ def update_edition(
         session,
         edition_id=edition.id,
         display_name=payload.display_name if "display_name" in fields else edition.display_name,
+        media_format=payload.media_format if "media_format" in fields else edition.media_format,
         release_date=payload.release_date if "release_date" in fields else edition.release_date,
         publisher=payload.publisher if "publisher" in fields else edition.publisher,
         region=payload.region if "region" in fields else edition.region,

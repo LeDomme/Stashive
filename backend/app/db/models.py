@@ -89,6 +89,7 @@ class Edition(TimestampedModel, Base):
         index=True,
     )
     display_name: Mapped[str] = mapped_column(String(512), nullable=False)
+    media_format: Mapped[str | None] = mapped_column(String(64), nullable=True)
     release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     publisher: Mapped[str | None] = mapped_column(String(255), nullable=True)
     region: Mapped[str | None] = mapped_column(String(64), nullable=True)

@@ -56,6 +56,7 @@ class EditionCreateInput(BaseModel):
     """Input for creating a concrete edition below the path catalog entry."""
 
     display_name: str = Field(min_length=1, max_length=512)
+    media_format: str | None = Field(default=None, max_length=64)
     release_date: date | None = None
     publisher: str | None = Field(default=None, max_length=255)
     region: str | None = Field(default=None, max_length=64)
@@ -66,6 +67,7 @@ class EditionUpdateInput(BaseModel):
     """Partial input for a concrete edition."""
 
     display_name: str | None = Field(default=None, min_length=1, max_length=512)
+    media_format: str | None = Field(default=None, max_length=64)
     release_date: date | None = None
     publisher: str | None = Field(default=None, max_length=255)
     region: str | None = Field(default=None, max_length=64)
@@ -78,12 +80,34 @@ class EditionResponse(BaseModel):
     id: int
     catalog_entry_id: int
     display_name: str
+    media_format: str | None
     release_date: date | None
     publisher: str | None
     region: str | None
     language: str | None
 
     model_config = {"from_attributes": True}
+
+
+class LibraryTitleSummary(BaseModel):
+    id: int
+    catalog_entry_id: int
+    display_title: str
+    sort_title: str | None
+    type: str
+    edition_count: int
+    copy_count: int
+    media_formats: list[str]
+
+
+class LibraryEdition(EditionResponse):
+    identifiers: list["IdentifierResponse"]
+    copies: list["InventoryItemResponse"]
+
+
+class LibraryTitleDetail(BaseModel):
+    catalog_entry: CatalogEntryResponse
+    editions: list[LibraryEdition]
 
 
 class IdentifierCreateInput(BaseModel):

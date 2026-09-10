@@ -48,9 +48,17 @@ POST   /api/collections/{collection_id}/inventory-items
 GET    /api/collections/{collection_id}/inventory-items/{item_id}
 PATCH  /api/collections/{collection_id}/inventory-items/{item_id}
 DELETE /api/collections/{collection_id}/inventory-items/{item_id}
+
+GET    /api/collections/{collection_id}/library
+GET    /api/collections/{collection_id}/library/{catalog_entry_id}
 ```
 
 Final endpoint design may evolve with implementation.
+
+Library endpoints are collection-scoped VIEW read models over the existing
+CatalogEntry → Edition → InventoryItem hierarchy; they introduce no persisted
+library/grouping table. The list returns one summary per title and the detail
+embeds editions, identifiers, and physical copies.
 
 Location GET returns the complete nested tree for a collection. Roots and children are ordered
 case-insensitively by name, then by ID. Create accepts `name`, `type`, optional `description`,

@@ -115,6 +115,10 @@ Key concepts:
 
 Represents a concrete edition/product.
 
+`media_format` is an optional free-form string on the edition (for example DVD,
+Blu-ray, or UHD Blu-ray). A title may have editions in multiple formats, so it
+does not belong on `catalog_entries`.
+
 Examples:
 - Alien German Blu-ray
 - Alien German UHD Steelbook

@@ -99,6 +99,7 @@ class InventoryService:
         *,
         catalog_entry_id: int,
         display_name: str,
+        media_format: str | None = None,
         release_date: date | None = None,
         publisher: str | None = None,
         region: str | None = None,
@@ -109,6 +110,7 @@ class InventoryService:
         edition = Edition(
             catalog_entry_id=catalog_entry_id,
             display_name=display_name,
+            media_format=media_format,
             release_date=release_date,
             publisher=publisher,
             region=region,
@@ -123,6 +125,7 @@ class InventoryService:
         *,
         edition_id: int,
         display_name: str,
+        media_format: str | None = None,
         release_date: date | None,
         publisher: str | None,
         region: str | None,
@@ -131,6 +134,7 @@ class InventoryService:
         """Replace the editable metadata of a concrete product edition."""
         edition = self._edition(session, edition_id)
         edition.display_name = display_name
+        edition.media_format = media_format
         edition.release_date = release_date
         edition.publisher = publisher
         edition.region = region
