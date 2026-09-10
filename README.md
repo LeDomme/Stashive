@@ -109,6 +109,13 @@ When no account exists, the backend logs a one-time setup token. Paste it into t
 to create the first instance administrator. Browser sessions use server-side opaque tokens;
 enable AUTH_COOKIE_SECURE behind HTTPS.
 
+### Preview container
+
+Run `docker compose up -d` to start the preview image on port 8000. Its SQLite
+database is stored in the persistent `stashive-data` volume at `/app/data` and
+migrations run before the app starts. Images use `edge` on main, `pr-N` for pull
+requests, and immutable `sha-*` tags; no release tags exist yet.
+
 ### Validation
 
 ```bash

@@ -1,6 +1,16 @@
 # Deployment Direction
 
-This is a target design, not a requirement for the repository bootstrap task.
+T06e provides a preview-ready single-container deployment.
+
+```bash
+docker compose up -d
+```
+
+The default image is `ghcr.io/ledomme/stashive:edge`; set `STASHIVE_IMAGE` to
+`ghcr.io/ledomme/stashive:pr-N` when testing a pull request. The container
+serves the UI and `/api` on port 8000, runs Alembic migrations on startup, and
+persists SQLite under `/app/data` via the `stashive-data` volume. First-run setup
+tokens are written to container logs. Set `AUTH_COOKIE_SECURE=true` behind HTTPS.
 
 ## Default production goal
 

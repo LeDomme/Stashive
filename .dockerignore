@@ -1,0 +1,12 @@
+.git
+.serena
+**/__pycache__
+**/.pytest_cache
+backend/.venv
+backend/data
+frontend/node_modules
+frontend/dist
+frontend/test-results
+frontend/playwright-report
+*.db
+.DS_Store
