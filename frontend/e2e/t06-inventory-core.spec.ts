@@ -7,7 +7,7 @@ test('generic inventory workflow supports duplicate copies and location states',
   await page.getByLabel('Username').fill('adminuser')
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  await expect(page.getByLabel('Open application menu')).toBeVisible()
   await page.goto('/collections')
   await page.getByRole('link', { name: 'Browser collection' }).click()
   const collectionPath = new URL(page.url()).pathname

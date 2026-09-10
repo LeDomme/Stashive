@@ -8,8 +8,12 @@
   --color-brand-primary: var(--stashive-emerald);
   --color-brand-accent: var(--stashive-glow);
   --color-brand-soft: var(--stashive-mint);
-  --color-text-primary: var(--stashive-ink);
-  --color-page-background: var(--stashive-cloud);
+  --color-text-primary: #e8fff6;
+  --color-page-background: #071812;
+  --surface: rgb(10 31 24 / 92%);
+  --surface-raised: #102b22;
+  --border: #285342;
+  color-scheme: dark;
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   color: var(--color-text-primary);
   background: var(--color-page-background);
@@ -22,19 +26,23 @@
 body {
   margin: 0;
   min-width: 320px;
+  background: radial-gradient(circle at 12% -10%, rgb(16 230 161 / 18%), transparent 30rem), radial-gradient(circle at 92% 20%, rgb(6 95 70 / 42%), transparent 28rem), var(--color-page-background);
 }
 
 .application-shell {
   min-height: 100vh;
+  background: linear-gradient(135deg, rgb(15 23 42 / 30%), transparent 48rem);
 }
 
 .application-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 1rem;
   padding: 1.25rem clamp(1.25rem, 5vw, 5rem);
   color: var(--stashive-cloud);
-  background: var(--stashive-ink);
+  background: rgb(7 24 18 / 90%);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(14px);
 }
 
 .brand {
@@ -71,7 +79,7 @@ body {
 
 .page-content {
   width: min(100% - 2.5rem, 72rem);
-  margin: 3rem auto 5rem;
+  margin: clamp(2rem, 5vw, 4rem) auto 5rem;
 }
 
 .page-heading {
@@ -94,10 +102,10 @@ body {
 .panel,
 .empty-state {
   padding: clamp(1.25rem, 3vw, 2rem);
-  border: 1px solid #cce4da;
+  border: 1px solid var(--border);
   border-radius: 0.8rem;
-  background: #fff;
-  box-shadow: 0 0.35rem 1.5rem rgb(6 95 70 / 7%);
+  background: var(--surface);
+  box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 22%);
 }
 
 .collection-form {
@@ -145,10 +153,10 @@ select,
 textarea {
   width: 100%;
   padding: 0.65rem 0.75rem;
-  border: 1px solid #9cbdb0;
+  border: 1px solid var(--border);
   border-radius: 0.45rem;
-  color: var(--stashive-ink);
-  background: #fff;
+  color: var(--color-text-primary);
+  background: #0a2119;
 }
 
 input:focus-visible,
@@ -168,7 +176,7 @@ button {
   color: #fff;
   font-weight: 800;
   cursor: pointer;
-  background: var(--stashive-emerald);
+  background: linear-gradient(135deg, #087557, var(--stashive-emerald));
 }
 
 button:disabled {
@@ -465,6 +473,31 @@ button:disabled {
   margin: clamp(3rem, 12vh, 8rem) auto;
   padding: clamp(1.5rem, 5vw, 3rem);
 }
+
+/* Dark-only application shell and compact global navigation. */
+.status-card { border: 1px solid var(--border); border-radius: 1rem; background: var(--surface); box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 32%); }
+.status-card h1 { color: var(--stashive-cloud); }
+.app-menu { position: relative; margin-left: auto; }
+.app-menu summary { list-style: none; }
+.app-menu summary::-webkit-details-marker { display: none; }
+.app-menu__trigger { display: flex; align-items: center; gap: .55rem; padding: .55rem .7rem; border: 1px solid transparent; border-radius: .7rem; color: var(--stashive-cloud); cursor: pointer; user-select: none; }
+.app-menu__trigger:hover, .app-menu[open] .app-menu__trigger { border-color: var(--border); background: rgb(16 230 161 / 10%); }
+.app-menu__trigger span:last-child { color: var(--stashive-glow); font-size: 1.15rem; line-height: 1; }
+.app-menu__popover { position: absolute; z-index: 30; top: calc(100% + .6rem); right: 0; display: grid; width: min(17rem, calc(100vw - 2rem)); overflow: hidden; border: 1px solid var(--border); border-radius: .85rem; background: #0a2119; box-shadow: 0 1.25rem 3rem rgb(0 0 0 / 45%); }
+.app-menu__popover strong { padding: .9rem 1rem; border-bottom: 1px solid var(--border); color: var(--stashive-mint); }
+.app-menu__popover a, .app-menu__signout { width: 100%; padding: .8rem 1rem; border: 0; border-radius: 0; color: var(--stashive-cloud); background: transparent; font: inherit; font-weight: 700; text-align: left; text-decoration: none; }
+.app-menu__popover a:hover, .app-menu__signout:hover { background: rgb(16 230 161 / 11%); }
+.app-menu__signout { border-top: 1px solid var(--border); color: #ffb4ab; }
+.collection-card, .inventory-list > li, .location-node__content { border-color: var(--border); background: var(--surface); box-shadow: 0 .75rem 1.75rem rgb(0 0 0 / 16%); }
+.collection-card a { color: var(--color-text-primary); }
+.collection-card:hover { border-color: #3e8067; transform: translateY(-1px); }
+.collection-card__link, .back-link, .metadata-grid dt, .optional, .collection-card__role, .role-pill, .owner-label { color: var(--stashive-mint); }
+.button-secondary { color: var(--stashive-mint); border-color: #3e8067; }
+.button-secondary:hover { background: rgb(16 230 161 / 10%); }
+.button-danger { background: #a7342b; }
+.form-error, .state-message { color: #ffb4ab; }
+button:hover:not(:disabled) { filter: brightness(1.12); }
+@media (max-width: 42rem) { .application-header { padding: 1rem 1.25rem; } .brand-tagline, .app-menu__username { display: none; } .page-content { width: min(100% - 1.5rem, 72rem); } .status-card { margin-inline: .75rem; } }
 
 .eyebrow {
   margin: 0;

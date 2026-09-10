@@ -27,8 +27,17 @@ function mountApp(isInstanceAdmin: boolean) {
 }
 
 describe('App navigation', () => {
-  it('shows the user-management navigation item only to instance admins', () => {
-    expect(mountApp(true).text()).toContain('Users')
-    expect(mountApp(false).text()).not.toContain('Users')
+  it('opens the burger menu and scopes administration to instance admins', async () => {
+    const admin = mountApp(true)
+    const trigger = admin.find('[aria-label="Open application menu"]')
+    expect(trigger.attributes('aria-expanded')).toBe('false')
+    await trigger.trigger('click')
+    expect(trigger.attributes('aria-expanded')).toBe('true')
+    expect(admin.text()).toContain('Collections')
+    expect(admin.text()).toContain('Administration')
+    expect(admin.text()).toContain('Sign out')
+
+    const member = mountApp(false)
+    expect(member.text()).not.toContain('Administration')
   })
 })

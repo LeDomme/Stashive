@@ -14,7 +14,7 @@ async function login(
   await page.getByLabel('Username').fill(username)
   await page.getByLabel('Password').fill(userPassword)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  if (expectSuccess) await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  if (expectSuccess) await expect(page.getByLabel('Open application menu')).toBeVisible()
 }
 
 async function createUser(page: Page, username: string, isInstanceAdmin = false): Promise<void> {
@@ -42,11 +42,12 @@ test.describe.serial('T04 multiuser collection access', () => {
     await page.getByLabel('Username').fill('ownerUser')
     await page.getByLabel('Password').fill(password)
     await page.getByRole('button', { name: 'Create administrator' }).click()
-    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    await expect(page.getByLabel('Open application menu')).toBeVisible()
     await page.goto('/setup')
     await expect(page.getByRole('heading', { name: 'Stashive is ready to grow.' })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Users' }).click()
+    await page.getByLabel('Open application menu').click()
+    await page.getByRole('link', { name: 'Administration' }).click()
     await createUser(page, 'adminUser')
     await createUser(page, 'editorUser')
     await createUser(page, 'viewerUser')
@@ -149,7 +150,7 @@ test.describe.serial('T04 multiuser collection access', () => {
     await page.goto('/admin/users')
     await managedRow.getByRole('button', { name: 'Enable' }).click()
     await login(page, 'manageduser')
-    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    await expect(page.getByLabel('Open application menu')).toBeVisible()
 
     const adminContext = await browser.newContext()
     const adminPage = await adminContext.newPage()
@@ -169,7 +170,7 @@ test.describe.serial('T04 multiuser collection access', () => {
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page.getByText('Login failed. Check your credentials and try again.')).toBeVisible()
     await login(page, 'manageduser', 'a changed sufficiently long password')
-    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    await expect(page.getByLabel('Open application menu')).toBeVisible()
 
     const ownerRow = adminPage.getByRole('listitem').filter({ hasText: '(owneruser)' })
     await ownerRow.getByRole('button', { name: 'Disable' }).click()

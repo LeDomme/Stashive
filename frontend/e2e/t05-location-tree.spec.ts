@@ -9,7 +9,7 @@ async function login(page: Page, username: string): Promise<void> {
   await page.getByLabel('Username').fill(username)
   await page.getByLabel('Password').fill(password)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  await expect(page.getByLabel('Open application menu')).toBeVisible()
 }
 
 async function createRoot(page: Page, name: string, type = 'room'): Promise<void> {
