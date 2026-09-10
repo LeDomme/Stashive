@@ -72,6 +72,16 @@ describe('CollectionDetailView', () => {
     expect(wrapper.text()).toContain('owner')
   })
 
+  it('switches settings sections while preserving the active navigation state', async () => {
+    const wrapper = await mountView('owner')
+    const sharing = wrapper.findAll('button').find((button) => button.text() === 'Sharing')!
+
+    expect(wrapper.findAll('.settings-sidebar .is-active').map((button) => button.text())).toEqual(['General'])
+    await sharing.trigger('click')
+    expect(wrapper.findAll('.settings-sidebar .is-active').map((button) => button.text())).toEqual(['Sharing'])
+    expect(wrapper.get('[aria-labelledby="members-heading"]').attributes('style')).not.toContain('display: none')
+  })
+
   it('links from collection details to the collection-scoped locations route', async () => {
     const wrapper = await mountView('viewer')
 

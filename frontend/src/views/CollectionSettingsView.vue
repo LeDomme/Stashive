@@ -254,7 +254,7 @@ async function removeCollection(): Promise<void> {
       </nav>
 
       <div class="management-layout settings-management">
-        <nav class="management-sidebar panel" aria-label="Settings sections">
+        <nav class="management-sidebar panel settings-sidebar" aria-label="Settings sections">
           <button type="button" class="button-ghost" :class="{ 'is-active': activeSection === 'general' }" @click="activeSection = 'general'">General</button>
           <button v-if="canManageMembers" type="button" class="button-ghost" :class="{ 'is-active': activeSection === 'sharing' }" @click="activeSection = 'sharing'">Sharing</button>
           <button v-if="canTransferOwnership" type="button" class="button-ghost" :class="{ 'is-active': activeSection === 'ownership' }" @click="activeSection = 'ownership'">Ownership</button>

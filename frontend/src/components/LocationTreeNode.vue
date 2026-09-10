@@ -18,9 +18,9 @@ const locationTypeLabels = {
 <template>
   <li class="location-node">
     <button type="button" class="location-node__content" :class="{ 'is-selected': selectedId === node.id }" :aria-pressed="selectedId === node.id" @click="$emit('select', node)">
-      <div>
-        <strong>{{ node.name }}</strong>
-        <span class="role-pill">{{ locationTypeLabels[node.type] }}</span>
+      <div class="location-node__row">
+        <strong class="location-node__name">{{ node.name }}</strong>
+        <span class="location-type-badge">{{ locationTypeLabels[node.type] }}</span>
         <p v-if="node.description" class="location-node__description">
           {{ node.description }}
         </p>

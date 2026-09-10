@@ -30,6 +30,7 @@ describe('App navigation', () => {
   it('opens the burger menu and scopes administration to instance admins', async () => {
     const admin = mountApp(true)
     expect(admin.get('.brand__logo').attributes('src')).toBe('/stashive-logo.png')
+    expect(admin.get('[aria-label="Stashive home"]').attributes('href')).toBe('/collections')
     expect(admin.text()).toContain('Collect. Locate. Keep track.')
     const trigger = admin.find('[aria-label="Open application menu"]')
     expect(trigger.attributes('aria-expanded')).toBe('false')

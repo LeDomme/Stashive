@@ -204,8 +204,8 @@ async function remove(itemId: number) {
         >
       </nav>
       <form class="filter-toolbar panel" @submit.prevent="load">
-        <label
-          >Filter<select
+        <label class="toolbar-field"
+          ><span>Filter</span><select
             v-model="filter"
             @change="filter !== 'location' && (filterLocation = '')"
           >
@@ -213,18 +213,19 @@ async function remove(itemId: number) {
             <option value="unassigned">Unassigned</option>
             <option value="location">Location</option>
           </select></label
-        ><label v-if="filter === 'location'"
-          >Location<select v-model="filterLocation">
+        ><label v-if="filter === 'location'" class="toolbar-field"
+          ><span class="visually-hidden">Location</span><select v-model="filterLocation" aria-label="Location">
             <option value="">Choose a location</option>
             <option v-for="x in locationOptions" :value="String(x.id)">
               {{ x.path }}
             </option>
           </select></label
-        ><label v-if="filter === 'location'" class="checkbox-label"
-          ><input type="checkbox" v-model="descendants" /> Include
-          sublocations</label
-        ><button class="button-secondary button-compact">Apply filter</button>
-        ><button v-if="filter !== 'all' || filterLocation || !descendants" type="button" class="button-ghost button-compact" @click="clearFilters">Clear</button>
+        ><label v-if="filter === 'location'" class="checkbox-label toolbar-checkbox"
+          ><input type="checkbox" v-model="descendants" /> <span>Include
+          sublocations</span></label
+        ><div class="filter-toolbar__actions"><button class="button-secondary button-compact">Apply filter</button>
+          <button v-if="filter !== 'all' || filterLocation || !descendants" type="button" class="button-ghost button-compact" @click="clearFilters">Clear</button>
+        </div>
       </form>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       <form

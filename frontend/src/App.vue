@@ -10,14 +10,16 @@ const auth = useAuthStore();
 <template>
   <main class="application-shell">
     <header v-if="auth.user" class="application-header">
-      <RouterLink class="brand" to="/collections" aria-label="Stashive home">
-        <img src="/stashive-logo.png" alt="" class="brand__logo" />
-        <span
-          ><strong>Stashive</strong
-          ><small>Collect. Locate. Keep track.</small></span
-        >
-      </RouterLink>
-      <AppMenu />
+      <div class="application-header__content">
+        <RouterLink class="brand" to="/collections" aria-label="Stashive home">
+          <img src="/stashive-logo.png" alt="" class="brand__logo" />
+          <span
+            ><strong>Stashive</strong
+            ><small>Collect. Locate. Keep track.</small></span
+          >
+        </RouterLink>
+        <AppMenu />
+      </div>
     </header>
     <RouterView />
   </main>

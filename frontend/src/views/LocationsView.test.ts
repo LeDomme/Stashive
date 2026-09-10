@@ -44,6 +44,18 @@ describe('LocationsView', () => {
     expect(wrapper.text()).toContain('Shelf')
     expect(wrapper.text()).toContain('Blu-rays')
     expect(wrapper.text().indexOf('House')).toBeLessThan(wrapper.text().indexOf('Garage'))
+    expect(wrapper.findAll('.location-type-badge').map((badge) => badge.text())).toEqual(['Shelf', 'Shelf', 'Shelf', 'Shelf'])
+  })
+
+  it('keeps the type badge separate and updates the selected location detail', async () => {
+    const wrapper = await mountView()
+    const shelf = wrapper.findAll('.location-node__content')[2]
+    await shelf.trigger('click')
+
+    expect(shelf.find('.location-node__name').text()).toBe('Shelf')
+    expect(shelf.find('.location-type-badge').text()).toBe('Shelf')
+    expect(shelf.classes()).toContain('is-selected')
+    expect(wrapper.get('[aria-labelledby="selected-location-heading"]').text()).toContain('Blu-rays')
   })
 
   it('shows the editable empty state and a read-only viewer state', async () => {

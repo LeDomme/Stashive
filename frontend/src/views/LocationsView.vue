@@ -259,6 +259,10 @@ watch(() => route.params.collectionId, load, { immediate: true });
             <div v-if="canEdit" class="action-row management-actions"><button type="button" class="button-secondary" :aria-label="`Edit ${selected.name}`" @click="startEdit(selected)">Edit location</button><button type="button" class="button-secondary" :aria-label="`Add child to ${selected.name}`" @click="startChild(selected)">Add child</button><button type="button" class="button-danger button-icon" :aria-label="`Delete ${selected.name}`" title="Delete location" :disabled="selected.children.length > 0" @click="deleting = selected"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 11v6m4-6v6M9 7l1-2h4l1 2m-8 0 1 13h8l1-13" /></svg></button></div>
             <p v-if="canEdit && selected.children.length" class="location-node__hint">Move or remove child locations before deleting.</p>
           </template>
+          <div v-else class="empty-state location-detail-empty">
+            <h2 id="selected-location-heading">No location selected</h2>
+            <p>Select a location to view or edit its details.</p>
+          </div>
         </section>
       </div>
       <form
