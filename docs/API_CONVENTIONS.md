@@ -89,6 +89,11 @@ default. Set `include_descendants=false` for an exact location. `unassigned=true
 returns items without a location; it cannot be combined with `location_id`, and
 `include_descendants` requires `location_id`.
 
+Library summaries accept the same copy filters. With a filter, a title is returned
+only when it has a matching physical copy; its edition and copy counts cover only
+the matching copies and their editions. Without a filter, titles without copies are
+also returned.
+
 ## Errors
 
 Errors must be:

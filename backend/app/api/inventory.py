@@ -126,17 +126,93 @@ def item_in_collection_or_404(
     return item
 
 
+def validate_inventory_filters(
+    session: DatabaseSession,
+    collection: Collection,
+    *,
+    location_id: int | None,
+    include_descendants: bool,
+    unassigned: bool,
+) -> None:
+    """Apply the shared copy-filter contract used by inventory read models."""
+    if location_id is not None and unassigned:
+        raise HTTPException(status_code=422, detail="location_id and unassigned cannot be combined")
+    if location_id is None and not include_descendants:
+        raise HTTPException(status_code=422, detail="include_descendants requires location_id")
+    if location_id is not None:
+        location_in_collection_or_404(session, collection, location_id)
+
+
 @router.get("/{collection_id}/library", response_model=list[LibraryTitleSummary])
 def list_library(
-    collection_id: int, session: DatabaseSession = Depends(get_session), user: User = Depends(current_user_or_401)  # noqa: E501
+    collection_id: int,
+    location_id: int | None = Query(default=None, gt=0),
+    include_descendants: bool = True,
+    unassigned: bool = False,
+    session: DatabaseSession = Depends(get_session),
+    user: User = Depends(current_user_or_401),
 ) -> list[LibraryTitleSummary]:
     """Return a collection-scoped, title-centric read model without N+1 loading."""
-    collection_or_404(session, user, collection_id)
-    query = select(CatalogEntry).where(CatalogEntry.collection_id == collection_id).options(
-        selectinload(CatalogEntry.editions).selectinload(Edition.inventory_items)
-    ).order_by(func.lower(func.coalesce(CatalogEntry.sort_title, CatalogEntry.display_title)), CatalogEntry.id)  # noqa: E501
+    collection, _ = collection_or_404(session, user, collection_id)
+    validate_inventory_filters(
+        session,
+        collection,
+        location_id=location_id,
+        include_descendants=include_descendants,
+        unassigned=unassigned,
+    )
+    filtered = location_id is not None or unassigned
+    matching_copy_ids = {
+        item.id
+        for item in InventoryService().list_inventory(
+            session,
+            collection_id=collection.id,
+            location_id=location_id,
+            recursive=include_descendants,
+            unassigned=unassigned,
+        )
+    }
+    query = (
+        select(CatalogEntry)
+        .where(CatalogEntry.collection_id == collection.id)
+        .options(selectinload(CatalogEntry.editions).selectinload(Edition.inventory_items))
+        .order_by(
+            func.lower(func.coalesce(CatalogEntry.sort_title, CatalogEntry.display_title)),
+            CatalogEntry.id,
+        )
+    )
     entries = session.scalars(query).all()
-    return [LibraryTitleSummary(id=entry.id, catalog_entry_id=entry.id, display_title=entry.display_title, sort_title=entry.sort_title, type=entry.type, edition_count=len(entry.editions), copy_count=sum(len(edition.inventory_items) for edition in entry.editions), media_formats=sorted({edition.media_format for edition in entry.editions if edition.media_format}, key=str.lower)) for entry in entries]  # noqa: E501
+    summaries: list[LibraryTitleSummary] = []
+    for entry in entries:
+        editions = [
+            edition
+            for edition in entry.editions
+            if not filtered or any(item.id in matching_copy_ids for item in edition.inventory_items)
+        ]
+        copies = [
+            item
+            for edition in editions
+            for item in edition.inventory_items
+            if not filtered or item.id in matching_copy_ids
+        ]
+        if filtered and not copies:
+            continue
+        summaries.append(
+            LibraryTitleSummary(
+                id=entry.id,
+                catalog_entry_id=entry.id,
+                display_title=entry.display_title,
+                sort_title=entry.sort_title,
+                type=entry.type,
+                edition_count=len(editions),
+                copy_count=len(copies),
+                media_formats=sorted(
+                    {edition.media_format for edition in editions if edition.media_format},
+                    key=str.lower,
+                ),
+            )
+        )
+    return summaries
 
 
 @router.get("/{collection_id}/library/{entry_id}", response_model=LibraryTitleDetail)
@@ -440,12 +516,13 @@ def list_inventory_items(
 ) -> list[InventoryItem]:
     """List copies with an optional scoped location or unassigned filter."""
     collection, _ = collection_or_404(session, user, collection_id)
-    if location_id is not None and unassigned:
-        raise HTTPException(status_code=422, detail="location_id and unassigned cannot be combined")
-    if location_id is None and not include_descendants:
-        raise HTTPException(status_code=422, detail="include_descendants requires location_id")
-    if location_id is not None:
-        location_in_collection_or_404(session, collection, location_id)
+    validate_inventory_filters(
+        session,
+        collection,
+        location_id=location_id,
+        include_descendants=include_descendants,
+        unassigned=unassigned,
+    )
     return InventoryService().list_inventory(
         session,
         collection_id=collection.id,

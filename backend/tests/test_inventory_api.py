@@ -12,6 +12,7 @@ from app.db.models import (
     CollectionMember,
     Edition,
     Identifier,
+    InventoryItem,
     Location,
     User,
 )
@@ -405,3 +406,86 @@ async def test_inventory_item_api_supports_assignment_moves_filters_and_privacy(
         and foreign_location.status_code == 404
     )
     assert cleared.json()["location_id"] is None and cleared.json()["condition"] is None
+
+
+@pytest.mark.anyio
+async def test_library_summaries_group_and_filter_matching_copies(
+    database: Database, inventory_context: dict[str, int | dict[str, User]]
+) -> None:
+    collection_id = inventory_context["collection_id"]
+    other_collection_id = inventory_context["other_collection_id"]
+    users = inventory_context["users"]
+    assert (
+        isinstance(collection_id, int)
+        and isinstance(other_collection_id, int)
+        and isinstance(users, dict)
+    )
+    alien_id = add_entry(database, collection_id, "Alien")
+    alien_blu_ray = add_edition(database, alien_id, "Blu-ray")
+    alien_uhd = add_edition(database, alien_id, "UHD")
+    heat_id = add_entry(database, collection_id, "Heat")
+    heat_dvd = add_edition(database, heat_id, "DVD")
+    empty_id = add_entry(database, collection_id, "Empty")
+    add_edition(database, empty_id, "VHS")
+    with database.session_factory() as session:
+        root = Location(collection_id=collection_id, name="Room", type="room")
+        foreign = Location(collection_id=other_collection_id, name="Private", type="room")
+        session.add_all([root, foreign])
+        session.flush()
+        child = Location(collection_id=collection_id, parent_id=root.id, name="Shelf", type="shelf")
+        session.add(child)
+        session.flush()
+        session.add_all(
+            [
+                InventoryItem(edition_id=alien_blu_ray, location_id=root.id),
+                InventoryItem(edition_id=alien_uhd, location_id=child.id),
+                InventoryItem(edition_id=alien_uhd),
+                InventoryItem(edition_id=heat_dvd, location_id=child.id),
+            ]
+        )
+        session.get(Edition, alien_blu_ray).media_format = "Blu-ray"
+        session.get(Edition, alien_uhd).media_format = "UHD Blu-ray"
+        session.commit()
+        root_id, foreign_id = root.id, foreign.id
+    app.state.database = database
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        authenticate(client, database, users["viewer"])
+        unfiltered = await client.get(f"/api/collections/{collection_id}/library")
+        exact = await client.get(
+            f"/api/collections/{collection_id}/library?location_id={root_id}&include_descendants=false"
+        )
+        recursive = await client.get(
+            f"/api/collections/{collection_id}/library?location_id={root_id}"
+        )
+        unassigned = await client.get(f"/api/collections/{collection_id}/library?unassigned=true")
+        conflict = await client.get(
+            f"/api/collections/{collection_id}/library?location_id={root_id}&unassigned=true"
+        )
+        invalid = await client.get(
+            f"/api/collections/{collection_id}/library?include_descendants=false"
+        )
+        foreign = await client.get(
+            f"/api/collections/{collection_id}/library?location_id={foreign_id}"
+        )
+        client.cookies.clear()
+        authenticate(client, database, users["instance"])
+        inaccessible = await client.get(f"/api/collections/{collection_id}/library")
+    assert [
+        (title["display_title"], title["edition_count"], title["copy_count"])
+        for title in unfiltered.json()
+    ] == [("Alien", 2, 3), ("Empty", 1, 0), ("Heat", 1, 1)]
+    assert unfiltered.json()[0]["media_formats"] == ["Blu-ray", "UHD Blu-ray"]
+    assert [
+        (title["display_title"], title["edition_count"], title["copy_count"])
+        for title in exact.json()
+    ] == [("Alien", 1, 1)]
+    assert [
+        (title["display_title"], title["edition_count"], title["copy_count"])
+        for title in recursive.json()
+    ] == [("Alien", 2, 2), ("Heat", 1, 1)]
+    assert [
+        (title["display_title"], title["edition_count"], title["copy_count"])
+        for title in unassigned.json()
+    ] == [("Alien", 1, 1)]
+    assert conflict.status_code == 422 and invalid.status_code == 422 and foreign.status_code == 404
+    assert inaccessible.status_code == 404

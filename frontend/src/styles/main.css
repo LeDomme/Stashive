@@ -728,6 +728,18 @@ h1 {
 .filter-toolbar__controls .button-secondary:hover { background: rgb(16 230 161 / .16); }
 .filter-toolbar__summary { margin: 0; padding: .65rem .9rem; border-top: 1px solid var(--border); color: #a8cabc; font-size: .82rem; font-weight: 600; }
 
+/* U03b.1: title-centric inventory library cards. */
+.library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+.library-card { min-width: 0; }
+.library-card__link { display: grid; grid-template-columns: 5rem minmax(0, 1fr); gap: 1rem; min-height: 9rem; padding: 1rem; border: 1px solid rgb(111 243 199 / .18); border-radius: .9rem; color: inherit; text-decoration: none; background: linear-gradient(145deg, rgb(16 43 34 / .96), rgb(8 28 21 / .94)); box-shadow: 0 .75rem 1.75rem rgb(0 0 0 / 16%); transition: border-color .15s ease, transform .15s ease, background .15s ease; }
+.library-card__link:hover { border-color: rgb(111 243 199 / .52); transform: translateY(-2px); background: linear-gradient(145deg, rgb(19 57 43 / .98), rgb(8 32 23 / .96)); }
+.library-card__link:focus-visible { outline: 3px solid var(--stashive-glow); outline-offset: 3px; }
+.library-card__cover { display: grid; place-items: end center; min-height: 7rem; padding: .6rem; border: 1px solid rgb(111 243 199 / .18); border-radius: .55rem; color: rgb(111 243 199 / .6); font-size: .65rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; background: linear-gradient(145deg, #0a251a, #07140f); }
+.library-card__body { display: grid; align-content: center; gap: .45rem; min-width: 0; }
+.library-card__title { overflow: hidden; color: #effff8; font-size: 1.15rem; font-weight: 780; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.library-card__summary { color: #cce7da; font-size: .88rem; }
+.library-card__formats { color: var(--stashive-mint); font-size: .8rem; font-weight: 700; }
+
 .locations-workspace { display: grid; grid-template-columns: minmax(19rem, .9fr) minmax(0, 1.8fr); gap: 1rem; align-items: start; margin-bottom: 1.25rem; }
 .locations-workspace .management-layout { display: contents; }
 .locations-workspace .management-sidebar { grid-column: 1; grid-row: 1; }
