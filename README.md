@@ -105,7 +105,8 @@ include Alembic revisions and migration tests.
 
 ### First-run authentication
 
-When no account exists, the backend logs a one-time setup token. Paste it into the setup page
+When no account exists, the backend logs a one-time setup token. Retrieve it with
+`docker logs stashive` (or `docker compose logs stashive`) and paste it into the setup page
 to create the first instance administrator. Browser sessions use server-side opaque tokens;
 enable AUTH_COOKIE_SECURE behind HTTPS.
 

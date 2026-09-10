@@ -70,16 +70,24 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         run: |
           image="${REGISTRY}/${IMAGE_NAME}:pr-${{ github.event.number }}"
+          redacted_logs() {
+            docker logs stashive-pr-smoke 2>&1 | sed -E 's/(Stashive first-run setup token: ).*/\1[REDACTED]/'
+          }
           docker pull "$image"
           docker run -d --name stashive-pr-smoke -p 18000:8000 -v stashive-pr-smoke:/app/data "$image"
           for attempt in $(seq 1 30); do
             status=$(docker inspect --format '{{.State.Health.Status}}' stashive-pr-smoke)
             [ "$status" = healthy ] && break
-            [ "$status" = unhealthy ] && docker logs stashive-pr-smoke && exit 1
+            [ "$status" = unhealthy ] && { redacted_logs; exit 1; }
             sleep 2
           done
-          [ "$(docker inspect --format '{{.State.Health.Status}}' stashive-pr-smoke)" = healthy ] || (docker logs stashive-pr-smoke; exit 1)
+          [ "$(docker inspect --format '{{.State.Health.Status}}' stashive-pr-smoke)" = healthy ] || { redacted_logs; exit 1; }
           curl --fail http://127.0.0.1:18000/api/health
           curl --fail http://127.0.0.1:18000/
+          docker logs stashive-pr-smoke 2>&1 | grep -q 'Stashive first-run setup token:' || {
+            echo "First-run setup token log marker is missing"
+            redacted_logs
+            exit 1
+          }
       - if: always()
         run: docker rm -f -v stashive-pr-smoke || true

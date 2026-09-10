@@ -11,6 +11,7 @@ The default image is `ghcr.io/ledomme/stashive:edge`; set `STASHIVE_IMAGE` to
 serves the UI and `/api` on port 8000, runs Alembic migrations on startup, and
 persists SQLite under `/app/data` via the `stashive-data` volume. First-run setup
 tokens are written to container logs. Set `AUTH_COOKIE_SECURE=true` behind HTTPS.
+Retrieve a first-run token with `docker logs stashive` or `docker compose logs stashive`.
 
 ## Default production goal
 

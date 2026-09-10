@@ -1,6 +1,8 @@
 """Tests for local account, setup-token, and opaque-session operations."""
 
+import logging
 from datetime import timedelta
+from io import StringIO
 
 import pytest
 from argon2 import PasswordHasher
@@ -18,6 +20,11 @@ from app.auth.service import (
 from app.config import Settings
 from app.db.database import Database
 from app.db.models import Session, SetupToken, User
+from app.logging_config import (
+    APPLICATION_HANDLER_NAME,
+    APPLICATION_LOGGER_NAME,
+    configure_application_logging,
+)
 
 password_hasher = PasswordHasher()
 
@@ -71,6 +78,44 @@ def test_setup_creates_admin_consumes_tokens_and_never_stores_plaintext(database
                 display_name=None,
                 password="correct horse battery staple",
             )
+
+
+def test_setup_token_logging_is_visible_only_for_fresh_instances(database: Database) -> None:
+    configure_application_logging()
+    configure_application_logging()
+    app_logger = logging.getLogger(APPLICATION_LOGGER_NAME)
+    handlers = [
+        handler for handler in app_logger.handlers if handler.get_name() == APPLICATION_HANDLER_NAME
+    ]
+    assert len(handlers) == 1
+
+    handler = handlers[0]
+    stream = StringIO()
+    previous_stream = handler.setStream(stream)
+    previous_disable_level = logging.root.manager.disable
+    logging.disable(logging.NOTSET)
+    service_logger = logging.getLogger("app.auth.service")
+    previous_service_logger_disabled = service_logger.disabled
+    service_logger.disabled = False
+    try:
+        service = AuthenticationService(auth_settings())
+        with database.session_factory() as session:
+            assert service.setup_required(session)
+            assert service_logger.isEnabledFor(logging.INFO)
+            service.ensure_setup_token(session)
+            assert session.scalar(select(SetupToken)) is not None
+            assert "Stashive first-run setup token:" in stream.getvalue()
+
+            stream.seek(0)
+            stream.truncate(0)
+            session.add(User(username="existing", password_hash=password_hasher.hash("password")))
+            session.commit()
+            service.ensure_setup_token(session)
+            assert "Stashive first-run setup token:" not in stream.getvalue()
+    finally:
+        service_logger.disabled = previous_service_logger_disabled
+        logging.disable(previous_disable_level)
+        handler.setStream(previous_stream)
 
 
 def test_login_logout_and_csrf_validation(database: Database) -> None:
