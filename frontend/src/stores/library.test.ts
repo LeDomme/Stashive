@@ -12,4 +12,15 @@ describe('library store', () => {
     const store = useLibraryStore(); await store.load(2); await store.loadDetail(2, 1)
     expect(api.listLibrary).toHaveBeenCalledWith(2, {}); expect(store.titles[0].media_formats).toEqual(['Blu-ray']); expect(store.title?.editions[0].identifiers[0].value).toBe('123')
   })
+  it('clears a prior detail before loading another title', async () => {
+    let resolveDetail: ((value: Awaited<ReturnType<typeof api.getLibraryTitle>>) => void) | undefined
+    vi.mocked(api.getLibraryTitle).mockReturnValue(new Promise((resolve) => { resolveDetail = resolve }))
+    const store = useLibraryStore()
+    store.title = { catalog_entry: { id: 1, collection_id: 2, display_title: 'Alien', type: 'movie', sort_title: null, notes: null }, editions: [] }
+    const loading = store.loadDetail(2, 3)
+    expect(store.title).toBeNull()
+    resolveDetail?.({ catalog_entry: { id: 3, collection_id: 2, display_title: 'Heat', type: 'movie', sort_title: null, notes: null }, editions: [] })
+    await loading
+    expect(store.title?.catalog_entry.display_title).toBe('Heat')
+  })
 })

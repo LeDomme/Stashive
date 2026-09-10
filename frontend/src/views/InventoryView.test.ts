@@ -55,6 +55,13 @@ describe('InventoryView', () => {
     expect(wrapper.get('.filter-toolbar__summary').text()).toBe('1 title · 1 physical copy')
     expect(wrapper.get('.library-card__summary').text()).toBe('1 edition · 1 copy')
   })
+  it('navigates title cards to their collection-scoped detail route', async () => {
+    const wrapper = await view('viewer')
+    await wrapper.get('.library-card__link').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('inventory-title')
+    expect(router.currentRoute.value.params).toMatchObject({ collectionId: '1', catalogEntryId: '2' })
+  })
   it('shows Add item for every content editor role and never for viewers', async () => {
     for (const role of ['owner', 'admin', 'editor'] as const) expect(button(await view(role), 'Add item')).toBeDefined()
     expect(button(await view('viewer'), 'Add item')).toBeUndefined()
