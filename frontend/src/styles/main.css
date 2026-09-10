@@ -107,6 +107,20 @@ body {
   margin-bottom: 2rem;
 }
 
+.auth-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.auth-form > button {
+  margin-top: 0.5rem;
+}
+
+.auth-form [role='alert'] {
+  margin: 0;
+}
+
 .collection-form h2,
 .empty-state h2,
 .confirmation h2 {
