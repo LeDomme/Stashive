@@ -175,10 +175,29 @@ test.describe.serial('T04 multiuser collection access', () => {
 
     const ownerRow = adminPage.getByRole('listitem').filter({ hasText: '(owneruser)' })
     await ownerRow.getByRole('button', { name: 'Disable' }).click()
-    await adminPage.getByRole('button', { name: 'Confirm disable' }).click()
+    const [ownerDisableResponse] = await Promise.all([
+      adminPage.waitForResponse((response) =>
+        response.url().includes('/api/admin/users/') &&
+        response.request().method() === 'PATCH' &&
+        response.request().postData() === '{"is_active":false}',
+      ),
+      adminPage.getByRole('button', { name: 'Confirm disable' }).click(),
+    ])
+    expect(ownerDisableResponse.status()).toBe(200)
+    await expect(ownerRow.getByText('Disabled', { exact: true })).toBeVisible()
     const ownRow = adminPage.getByRole('listitem').filter({ hasText: '(secondinstanceadmin)' })
-    await ownRow.getByRole('button', { name: 'Remove admin' }).click()
+    const [removeAdminResponse] = await Promise.all([
+      adminPage.waitForResponse((response) =>
+        response.url().includes('/api/admin/users/') &&
+        response.request().method() === 'PATCH' &&
+        response.request().postData() === '{"is_instance_admin":false}',
+      ),
+      ownRow.getByRole('button', { name: 'Remove admin' }).click(),
+    ])
+    expect(removeAdminResponse.status()).toBe(409)
     await expect(adminPage.getByText('At least one active instance admin must remain.')).toBeVisible()
+    await expect(ownRow.getByText('Instance admin', { exact: true })).toBeVisible()
+    await expect(ownRow.getByRole('button', { name: 'Remove admin' })).toBeVisible()
     await expect(adminPage.getByRole('heading', { name: 'Local users' })).toBeVisible()
     await adminContext.close()
   })
