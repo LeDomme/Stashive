@@ -8,6 +8,7 @@ import LoginView from '@/views/LoginView.vue'
 import LocationsView from '@/views/LocationsView.vue'
 import CatalogView from '@/views/CatalogView.vue'
 import CatalogDetailView from '@/views/CatalogDetailView.vue'
+import InventoryView from '@/views/InventoryView.vue'
 import SetupView from '@/views/SetupView.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -29,6 +30,7 @@ const router = createRouter({
     },
     { path: '/collections/:collectionId/catalog', name: 'catalog', component: CatalogView },
     { path: '/collections/:collectionId/catalog/:entryId', name: 'catalog-detail', component: CatalogDetailView },
+    { path: '/collections/:collectionId/inventory', name: 'inventory', component: InventoryView },
     { path: '/admin/users', name: 'admin-users', component: AdminUsersView, meta: { requiresInstanceAdmin: true } },
     {
       path: '/collections/:collectionId',
