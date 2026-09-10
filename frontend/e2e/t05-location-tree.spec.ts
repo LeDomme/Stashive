@@ -22,6 +22,7 @@ async function createRoot(page: Page, name: string, type = 'room'): Promise<void
 }
 
 async function createChild(page: Page, parent: string, name: string, type = 'room'): Promise<void> {
+  await page.locator('.location-node__content').filter({ hasText: parent }).first().click()
   await page.getByRole('button', { name: `Add child to ${parent}` }).click()
   const form = page.locator('form').filter({ hasText: `Add child to ${parent}` })
   await form.getByLabel('Name').fill(name)
@@ -48,6 +49,7 @@ test.describe.serial('T05 location tree', () => {
     await expect(page.getByRole('listitem').filter({ hasText: 'House' }).first()).toContainText('Basement')
     await expect(page.getByRole('listitem').filter({ hasText: 'Shelf' }).first()).toContainText('Box')
 
+    await page.locator('.location-node__content').filter({ hasText: 'Box' }).first().click()
     await page.getByRole('button', { name: 'Edit Box' }).click()
     const editForm = page.locator('form').filter({ hasText: 'Edit Box' })
     await editForm.getByLabel('Name').fill('Archive Box')
@@ -56,12 +58,14 @@ test.describe.serial('T05 location tree', () => {
     await expect(page.getByRole('listitem').filter({ hasText: 'Cabinet' }).first()).toContainText('Archive Box')
     await expect(page.getByRole('listitem').filter({ hasText: 'Shelf' }).first()).not.toContainText('Archive Box')
 
+    await page.locator('.location-node__content').filter({ hasText: 'Archive Box' }).first().click()
     await page.getByRole('button', { name: 'Edit Archive Box' }).click()
     const moveToRoot = page.locator('form').filter({ hasText: 'Edit Archive Box' })
     await moveToRoot.getByLabel('Parent').selectOption({ label: 'No parent / Root' })
     await moveToRoot.getByRole('button', { name: 'Save changes' }).click()
-    await expect(page.getByRole('list', { name: 'Location tree' }).locator(':scope > li').filter({ hasText: 'Archive Box' })).toBeVisible()
+    await expect(page.locator('.location-node__content').filter({ hasText: 'Archive Box' }).last()).toBeVisible()
 
+    await page.locator('.location-node__content').filter({ hasText: 'House' }).first().click()
     await page.getByRole('button', { name: 'Edit House' }).click()
     const houseForm = page.locator('form').filter({ hasText: 'Edit House' })
     const parentChoices = await houseForm.getByLabel('Parent').locator('option').allTextContents()
@@ -73,10 +77,12 @@ test.describe.serial('T05 location tree', () => {
     await houseForm.getByRole('button', { name: 'Cancel' }).click()
 
     await createRoot(page, 'Temporary box', 'box')
+    await page.locator('.location-node__content').filter({ hasText: 'Temporary box' }).first().click()
     await page.getByRole('button', { name: 'Delete Temporary box' }).click()
     await expect(page.getByRole('heading', { name: 'Delete Temporary box?' })).toBeVisible()
     await page.getByRole('button', { name: 'Confirm delete' }).click()
     await expect(page.getByText('Temporary box')).toHaveCount(0)
+    await page.locator('.location-node__content').filter({ hasText: 'House' }).first().click()
     await expect(page.getByRole('button', { name: 'Delete House' })).toBeDisabled()
     await expect(page.getByText('Move or remove child locations before deleting.').first()).toBeVisible()
   })
@@ -87,6 +93,7 @@ test.describe.serial('T05 location tree', () => {
     await expect(page.getByRole('heading', { name: 'Locations' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add root location' })).toBeVisible()
     await createRoot(page, 'Editor shelf', 'shelf')
+    await page.locator('.location-node__content').filter({ hasText: 'Editor shelf' }).first().click()
     await expect(page.getByRole('button', { name: 'Edit Editor shelf' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Delete Editor shelf' })).toBeVisible()
 

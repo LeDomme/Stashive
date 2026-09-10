@@ -65,7 +65,7 @@ describe('LocationsView', () => {
   it.each(['owner', 'admin', 'editor'] as const)('shows mutation controls for %s', async (role) => {
     const wrapper = await mountView(role)
     expect(wrapper.findAll('button').map((button) => button.text())).toContain('Add child')
-    expect(wrapper.findAll('button').map((button) => button.text())).toContain('Edit')
+    expect(wrapper.findAll('button').map((button) => button.text())).toContain('Edit location')
   })
 
   it('creates a root and a selected child with typed payloads', async () => {
@@ -88,8 +88,7 @@ describe('LocationsView', () => {
   it('edits metadata, can make a child root, and excludes self and descendants from parents', async () => {
     vi.mocked(locationApi.updateLocation).mockResolvedValue(tree[0])
     const wrapper = await mountView()
-    const editButtons = wrapper.findAll('button').filter((button) => button.text() === 'Edit')
-    await editButtons[0].trigger('click')
+    await wrapper.findAll('button').find((button) => button.text() === 'Edit location')!.trigger('click')
     const form = wrapper.find('form')
     await form.get('input').setValue('House renamed')
     const parentSelect = form.findAll('select')[1]
@@ -105,8 +104,8 @@ describe('LocationsView', () => {
   it('requires delete confirmation and shows safe conflict errors', async () => {
     vi.mocked(locationApi.deleteLocation).mockRejectedValue(new ApiError(409))
     const wrapper = await mountView()
-    const deleteButtons = wrapper.findAll('button').filter((button) => button.text() === 'Delete')
-    await deleteButtons[2].trigger('click')
+    await wrapper.findAll('.location-node__content')[2].trigger('click')
+    await wrapper.find('[aria-label="Delete Shelf"]').trigger('click')
     expect(locationApi.deleteLocation).not.toHaveBeenCalled()
     await wrapper.findAll('button').find((button) => button.text() === 'Confirm delete')!.trigger('click')
     await flushPromises()

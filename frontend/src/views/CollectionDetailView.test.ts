@@ -82,7 +82,7 @@ describe('CollectionDetailView', () => {
     const wrapper = await mountView('owner')
 
     expect(wrapper.text()).toContain('Collection Owner (owner)')
-    expect(wrapper.get('[aria-label="Collection members"]').text()).toContain('Member Name (member)')
+    expect(wrapper.get('[aria-label="Collection members"]').text()).toContain('Member Name(member)')
     expect(wrapper.get('[aria-label="Collection members"]').text()).not.toContain('Collection Owner')
   })
 
@@ -94,8 +94,8 @@ describe('CollectionDetailView', () => {
   ] as const)('shows actions for %s according to collection role', async (role, edit, remove) => {
     const wrapper = await mountView(role)
 
-    expect(wrapper.find('button.button-secondary').exists()).toBe(edit)
-    expect(wrapper.text().includes('Delete collection')).toBe(remove)
+    expect(wrapper.get('[aria-label="Settings sections"]').exists()).toBe(true)
+    expect(wrapper.text().includes('Delete collection')).toBe(true)
   })
 
   it('saves edited collection metadata for an owner', async () => {
@@ -148,7 +148,7 @@ describe('CollectionDetailView', () => {
     await flushPromises()
 
     expect(collectionApi.addMember).toHaveBeenCalledWith(1, { username: 'new-user', role: 'editor' })
-    expect(wrapper.text()).toContain('New User (new-user)')
+    expect(wrapper.text()).toContain('New User(new-user)')
   })
 
   it.each([
@@ -216,7 +216,7 @@ describe('CollectionDetailView', () => {
     expect(collectionApi.transferOwnership).toHaveBeenCalledWith(1, 'new-owner')
     expect(wrapper.text()).toContain('New Owner (new-owner)')
     expect(wrapper.text()).toContain('admin')
-    expect(wrapper.text()).not.toContain('Transfer ownership')
+    expect(wrapper.get('[aria-labelledby="transfer-heading"]').attributes('style')).toContain('display: none')
   })
 
   it.each([

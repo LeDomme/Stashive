@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView } from "vue-router";
 
-import { useAuthStore } from '@/stores/auth'
-import AppMenu from '@/components/AppMenu.vue'
+import { useAuthStore } from "@/stores/auth";
+import AppMenu from "@/components/AppMenu.vue";
 
-const auth = useAuthStore()
+const auth = useAuthStore();
 </script>
 
 <template>
@@ -12,7 +12,10 @@ const auth = useAuthStore()
     <header v-if="auth.user" class="application-header">
       <RouterLink class="brand" to="/collections" aria-label="Stashive home">
         <img src="/stashive-logo.png" alt="" class="brand__logo" />
-        <span><strong>Stashive</strong><small>Collect. Locate. Keep track.</small></span>
+        <span
+          ><strong>Stashive</strong
+          ><small>Collect. Locate. Keep track.</small></span
+        >
       </RouterLink>
       <AppMenu />
     </header>

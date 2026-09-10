@@ -625,6 +625,33 @@ h1 {
 .user-badges span { color: var(--stashive-mint); background: rgb(16 230 161 / .11); }
 @media (max-width: 42rem) { .brand small { display: none; } .page-content { width: min(100% - 1.5rem, 88rem); } .collection-nav { margin-top: -1.25rem; } .filter-toolbar label { width: 100%; } }
 
+/* U02c: one shared workspace axis and a stronger, product-level application header. */
+.application-header { min-height: 6.4rem; padding: .8rem clamp(1rem, 4vw, 4rem); border-bottom-color: rgb(111 243 199 / .25); }
+.brand { gap: 1rem; }
+.brand__logo { width: 4.5rem; height: 4.5rem; }
+.brand > span { gap: .15rem; }
+.brand strong { font-size: clamp(1.65rem, 2.8vw, 2.35rem); letter-spacing: -.065em; }
+.brand small { order: -1; color: var(--stashive-mint); font-size: .67rem; letter-spacing: .14em; text-transform: uppercase; }
+.page-content, .workspace-content, .settings-content { width: min(100% - clamp(2rem, 7vw, 8rem), 88rem); max-width: 88rem; }
+.filter-toolbar { border-radius: .85rem; }
+.button-ghost { border: 1px solid transparent; color: #b9dbcd; background: transparent; }
+.button-ghost:hover, .button-ghost.is-active { color: var(--stashive-mint); border-color: var(--border); background: rgb(16 230 161 / .1); }
+.button-icon { display: inline-grid; width: 2.35rem; height: 2.35rem; place-items: center; padding: .45rem; border-radius: .6rem; }
+.button-icon svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.inventory-card__actions { gap: .45rem; }
+.management-layout { display: grid; grid-template-columns: minmax(15rem, .72fr) minmax(0, 1.5fr); gap: 1rem; align-items: start; margin-bottom: 1.25rem; }
+.management-sidebar { display: grid; gap: .35rem; padding: .75rem; }
+.management-sidebar h2 { margin: .25rem .35rem .65rem; font-size: 1rem; }
+.management-sidebar .button-ghost { width: 100%; justify-content: flex-start; text-align: left; }
+.management-panel { min-width: 0; }
+.settings-management .management-panel { display: grid; gap: 1.25rem; }
+.danger-link { color: #ffb4ab; }
+.location-node__content { display: flex; width: 100%; border: 1px solid transparent; color: inherit; text-align: left; cursor: pointer; }
+.location-node__content:hover { border-color: rgb(111 243 199 / .35); background: #123a2b; }
+.location-node__content.is-selected { border-color: var(--stashive-glow); box-shadow: inset .2rem 0 var(--stashive-glow), 0 0 0 1px rgb(16 230 161 / .15); background: #124331; }
+.management-actions { margin-top: 1.25rem; }
+@media (max-width: 48rem) { .application-header { min-height: 4.8rem; } .brand__logo { width: 3rem; height: 3rem; } .brand strong { font-size: 1.45rem; } .management-layout { grid-template-columns: 1fr; } .management-sidebar { grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); } .management-sidebar h2 { grid-column: 1 / -1; } }
+
 .location-node__description,
 .location-node__hint {
   margin: 0.4rem 0 0;
