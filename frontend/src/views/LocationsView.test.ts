@@ -14,6 +14,9 @@ vi.mock('@/api/locations', () => ({ listLocationTree: vi.fn(), createLocation: v
 const router = createRouter({ history: createMemoryHistory(), routes: [
   { path: '/collections/:collectionId', name: 'collection-detail', component: LocationsView },
   { path: '/collections/:collectionId/locations', name: 'locations', component: LocationsView },
+  { path: '/collections/:collectionId/inventory', name: 'inventory', component: LocationsView },
+  { path: '/collections/:collectionId/catalog', name: 'catalog', component: LocationsView },
+  { path: '/collections/:collectionId/settings', name: 'collection-settings', component: LocationsView },
 ] })
 
 const node = (id: number, name: string, children: locationApi.LocationTreeNode[] = []): locationApi.LocationTreeNode => ({ id, collection_id: 1, parent_id: null, name, type: 'shelf', description: name === 'Shelf' ? 'Blu-rays' : null, children })
@@ -68,6 +71,7 @@ describe('LocationsView', () => {
   it('creates a root and a selected child with typed payloads', async () => {
     vi.mocked(locationApi.createLocation).mockResolvedValue(tree[0])
     const wrapper = await mountView()
+    await wrapper.get('button').trigger('click')
     const forms = wrapper.findAll('form')
     await forms[0].get('input').setValue(' Root ')
     await forms[0].trigger('submit.prevent')

@@ -29,6 +29,8 @@ function mountApp(isInstanceAdmin: boolean) {
 describe('App navigation', () => {
   it('opens the burger menu and scopes administration to instance admins', async () => {
     const admin = mountApp(true)
+    expect(admin.get('.brand__logo').attributes('src')).toBe('/stashive-logo.png')
+    expect(admin.text()).toContain('Collect. Locate. Keep track.')
     const trigger = admin.find('[aria-label="Open application menu"]')
     expect(trigger.attributes('aria-expanded')).toBe('false')
     await trigger.trigger('click')

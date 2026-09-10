@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ApiError } from '@/api/client'
 import * as collectionApi from '@/api/collections'
-import CollectionDetailView from './CollectionDetailView.vue'
+import CollectionDetailView from './CollectionSettingsView.vue'
 
 vi.mock('@/api/collections', () => ({
   listCollections: vi.fn(),
@@ -26,6 +26,9 @@ const router = createRouter({
     { path: '/collections', name: 'collections', component: CollectionDetailView },
     { path: '/collections/:collectionId', name: 'collection-detail', component: CollectionDetailView },
     { path: '/collections/:collectionId/locations', name: 'locations', component: CollectionDetailView },
+    { path: '/collections/:collectionId/inventory', name: 'inventory', component: CollectionDetailView },
+    { path: '/collections/:collectionId/catalog', name: 'catalog', component: CollectionDetailView },
+    { path: '/collections/:collectionId/settings', name: 'collection-settings', component: CollectionDetailView },
   ],
 })
 
@@ -63,22 +66,22 @@ describe('CollectionDetailView', () => {
   it('renders collection details and the effective role', async () => {
     const wrapper = await mountView('owner')
 
-    expect(wrapper.get('h1').text()).toBe('Films')
+    expect(wrapper.get('h1').text()).toBe('Settings')
     expect(wrapper.text()).toContain('Blu-rays')
-    expect(wrapper.text()).toContain('Your role')
+    expect(wrapper.text()).toContain('Access')
     expect(wrapper.text()).toContain('owner')
   })
 
   it('links from collection details to the collection-scoped locations route', async () => {
     const wrapper = await mountView('viewer')
 
-    expect(wrapper.get('a.button-link').attributes('href')).toBe('/collections/1/locations')
+    expect(wrapper.findAll('a').find((link) => link.text() === 'Locations')!.attributes('href')).toBe('/collections/1/locations')
   })
 
   it('shows the owner separately from safe member identity data', async () => {
     const wrapper = await mountView('owner')
 
-    expect(wrapper.text()).toContain('Owner: Collection Owner (owner)')
+    expect(wrapper.text()).toContain('Collection Owner (owner)')
     expect(wrapper.get('[aria-label="Collection members"]').text()).toContain('Member Name (member)')
     expect(wrapper.get('[aria-label="Collection members"]').text()).not.toContain('Collection Owner')
   })
@@ -121,7 +124,7 @@ describe('CollectionDetailView', () => {
     const wrapper = await mountView('owner')
 
     expect(collectionApi.deleteCollection).not.toHaveBeenCalled()
-    await wrapper.get('button.button-danger').trigger('click')
+    await wrapper.findAll('button').find((button) => button.text() === 'Delete collection')!.trigger('click')
     expect(wrapper.text()).toContain('Delete Films?')
     expect(collectionApi.deleteCollection).not.toHaveBeenCalled()
     await wrapper.findAll('button').find((button) => button.text() === 'Confirm delete')!.trigger('click')
@@ -211,7 +214,7 @@ describe('CollectionDetailView', () => {
     await flushPromises()
 
     expect(collectionApi.transferOwnership).toHaveBeenCalledWith(1, 'new-owner')
-    expect(wrapper.text()).toContain('Owner: New Owner (new-owner)')
+    expect(wrapper.text()).toContain('New Owner (new-owner)')
     expect(wrapper.text()).toContain('admin')
     expect(wrapper.text()).not.toContain('Transfer ownership')
   })

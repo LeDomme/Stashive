@@ -12,6 +12,7 @@ const description = ref('')
 const type = ref('movies')
 const createError = ref(false)
 const creating = ref(false)
+const creatingOpen = ref(false)
 
 const hasCollections = computed(() => collections.collections.length > 0)
 
@@ -27,12 +28,21 @@ async function createCollection(): Promise<void> {
   }
   try {
     const collectionId = await collections.createCollection(payload)
-    await router.push({ name: 'collection-detail', params: { collectionId } })
+    creatingOpen.value = false
+    await router.push({ name: 'inventory', params: { collectionId } })
   } catch {
     createError.value = true
   } finally {
     creating.value = false
   }
+}
+
+function closeCreate(): void {
+  creatingOpen.value = false
+  createError.value = false
+  name.value = ''
+  description.value = ''
+  type.value = 'movies'
 }
 </script>
 
@@ -41,12 +51,13 @@ async function createCollection(): Promise<void> {
     <div class="page-heading">
       <div>
         <p class="eyebrow">Collections</p>
-        <h1 id="collections-heading">Your collections</h1>
-        <p>Keep each physical collection separate, share it when you need to, and stay organized.</p>
+        <h1 id="collections-heading">Collections</h1>
+        <p>Your physical collections, ready to organize and share.</p>
       </div>
+      <button type="button" @click="creatingOpen = true">New collection</button>
     </div>
 
-    <form class="collection-form panel" @submit.prevent="createCollection">
+    <form v-if="creatingOpen" class="collection-form panel modal-panel" @submit.prevent="createCollection">
       <h2>Create a collection</h2>
       <label>
         Name
@@ -66,7 +77,7 @@ async function createCollection(): Promise<void> {
       <p v-if="createError" class="form-error" role="alert">
         The collection could not be created. Please try again.
       </p>
-      <button type="submit" :disabled="creating">{{ creating ? 'Creating…' : 'Create collection' }}</button>
+      <div class="action-row"><button type="submit" :disabled="creating">{{ creating ? 'Creating…' : 'Create collection' }}</button><button type="button" class="button-secondary" :disabled="creating" @click="closeCreate">Cancel</button></div>
     </form>
 
     <p v-if="collections.listLoading" class="state-message" role="status">Loading collections…</p>
@@ -79,11 +90,11 @@ async function createCollection(): Promise<void> {
     </div>
     <ul v-else class="collection-list" aria-label="Collections">
       <li v-for="collection in collections.collections" :key="collection.id" class="collection-card">
-        <RouterLink :to="{ name: 'collection-detail', params: { collectionId: collection.id } }">
-          <span class="collection-card__role">{{ collection.role }}</span>
+        <RouterLink :to="{ name: 'inventory', params: { collectionId: collection.id } }">
+          <span class="collection-card__type">{{ collection.type === 'movies' ? 'Movies' : 'Board games' }}</span>
           <h2>{{ collection.name }}</h2>
           <p>{{ collection.description || 'No description yet.' }}</p>
-          <span class="collection-card__link">Open collection →</span>
+          <span class="collection-card__link">Open library →</span>
         </RouterLink>
       </li>
     </ul>

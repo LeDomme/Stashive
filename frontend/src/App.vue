@@ -10,8 +10,10 @@ const auth = useAuthStore()
 <template>
   <main class="application-shell">
     <header v-if="auth.user" class="application-header">
-      <RouterLink class="brand" :to="auth.user ? '/collections' : '/'" aria-label="Stashive home">Stashive</RouterLink>
-      <span class="brand-tagline">Physical collections, organized.</span>
+      <RouterLink class="brand" to="/collections" aria-label="Stashive home">
+        <img src="/stashive-logo.png" alt="" class="brand__logo" />
+        <span><strong>Stashive</strong><small>Collect. Locate. Keep track.</small></span>
+      </RouterLink>
       <AppMenu />
     </header>
     <RouterView />

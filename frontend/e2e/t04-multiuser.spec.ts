@@ -44,7 +44,7 @@ test.describe.serial('T04 multiuser collection access', () => {
     await page.getByRole('button', { name: 'Create administrator' }).click()
     await expect(page.getByLabel('Open application menu')).toBeVisible()
     await page.goto('/setup')
-    await expect(page.getByRole('heading', { name: 'Stashive is ready to grow.' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Collections' })).toBeVisible()
 
     await page.getByLabel('Open application menu').click()
     await page.getByRole('link', { name: 'Administration' }).click()
@@ -58,11 +58,13 @@ test.describe.serial('T04 multiuser collection access', () => {
   test('owner creates, shares, and manages a collection', async ({ page }) => {
     await login(page, 'owneruser')
     await page.goto('/collections')
+    await page.getByRole('button', { name: 'New collection' }).click()
     const form = page.locator('form').filter({ hasText: 'Create a collection' })
     await form.getByLabel('Name').fill('Browser collection')
     await form.getByRole('button', { name: 'Create collection' }).click()
-    await expect(page.getByRole('heading', { name: 'Browser collection' })).toBeVisible()
-    collectionPath = new URL(page.url()).pathname
+    await expect(page.getByRole('heading', { name: 'Inventory' })).toBeVisible()
+    collectionPath = new URL(page.url()).pathname.replace('/inventory', '')
+    await page.goto(`${collectionPath}/settings`)
 
     await expect(page.getByRole('button', { name: 'Edit details' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Delete collection' })).toBeVisible()
@@ -78,8 +80,8 @@ test.describe.serial('T04 multiuser collection access', () => {
 
   test('admin can manage members but cannot delete or transfer ownership', async ({ page }) => {
     await login(page, 'adminuser')
-    await page.goto(collectionPath)
-    await expect(page.getByRole('heading', { name: 'Browser collection' })).toBeVisible()
+    await page.goto(`${collectionPath}/settings`)
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Edit details' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Delete collection' })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible()
@@ -92,8 +94,8 @@ test.describe.serial('T04 multiuser collection access', () => {
   test('editor and viewer have read-only collection access', async ({ page }) => {
     for (const username of ['editoruser', 'vieweruser']) {
       await login(page, username)
-      await page.goto(collectionPath)
-      await expect(page.getByRole('heading', { name: 'Browser collection' })).toBeVisible()
+      await page.goto(`${collectionPath}/settings`)
+      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Edit details' })).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Delete collection' })).toHaveCount(0)
       await expect(page.getByRole('heading', { name: 'Members' })).toHaveCount(0)
@@ -105,7 +107,7 @@ test.describe.serial('T04 multiuser collection access', () => {
     await login(page, 'outsideruser')
     await page.goto('/collections')
     await expect(page.getByText('Browser collection')).toHaveCount(0)
-    await page.goto(collectionPath)
+    await page.goto(`${collectionPath}/settings`)
     await expect(page.getByRole('heading', { name: 'Collection unavailable' })).toBeVisible()
 
     await login(page, 'secondinstanceadmin')
@@ -113,25 +115,25 @@ test.describe.serial('T04 multiuser collection access', () => {
     await expect(page.getByRole('heading', { name: 'Local users' })).toBeVisible()
     await page.goto('/collections')
     await expect(page.getByText('Browser collection')).toHaveCount(0)
-    await page.goto(collectionPath)
+    await page.goto(`${collectionPath}/settings`)
     await expect(page.getByRole('heading', { name: 'Collection unavailable' })).toBeVisible()
   })
 
   test('ownership transfer makes the new owner exclusive and keeps the old owner as admin', async ({ page }) => {
     await login(page, 'owneruser')
-    await page.goto(collectionPath)
+    await page.goto(`${collectionPath}/settings`)
     const transferForm = page.locator('form').filter({ hasText: 'Review transfer' })
     await transferForm.getByLabel('New owner username').fill('adminuser')
     await transferForm.getByRole('button', { name: 'Review transfer' }).click()
     await expect(page.getByText('You will remain an admin member')).toBeVisible()
     await page.getByRole('button', { name: 'Confirm transfer' }).click()
     await expect(page.getByRole('heading', { name: 'Transfer ownership' })).toHaveCount(0)
-    await expect(page.getByText('Owner: adminuser (adminuser)')).toBeVisible()
+    await expect(page.getByText('adminuser (adminuser)')).toBeVisible()
     await expect(page.getByRole('list', { name: 'Collection members' }).getByText('(owneruser)')).toBeVisible()
     await expect(page.getByRole('list', { name: 'Collection members' }).getByText('(adminuser)')).toHaveCount(0)
 
     await login(page, 'adminuser')
-    await page.goto(collectionPath)
+    await page.goto(`${collectionPath}/settings`)
     await expect(page.getByRole('button', { name: 'Delete collection' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Transfer ownership' })).toBeVisible()
   })

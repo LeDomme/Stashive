@@ -13,6 +13,7 @@ async function login(page: Page, username: string): Promise<void> {
 }
 
 async function createRoot(page: Page, name: string, type = 'room'): Promise<void> {
+  await page.getByRole('button', { name: 'Add root location' }).click()
   const form = page.locator('form').filter({ hasText: 'Add root location' })
   await form.getByLabel('Name').fill(name)
   await form.getByLabel('Type').selectOption(type)

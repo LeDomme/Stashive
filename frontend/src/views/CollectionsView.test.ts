@@ -18,7 +18,7 @@ const router = createRouter({
   history: createMemoryHistory(),
   routes: [
     { path: '/collections', name: 'collections', component: CollectionsView },
-    { path: '/collections/:collectionId', name: 'collection-detail', component: CollectionsView },
+    { path: '/collections/:collectionId/inventory', name: 'inventory', component: CollectionsView },
   ],
 })
 
@@ -47,7 +47,7 @@ describe('CollectionsView', () => {
 
     expect(wrapper.get('[aria-label="Collections"]').text()).toContain('Films')
     expect(wrapper.text()).toContain('Blu-rays')
-    expect(wrapper.text()).toContain('owner')
+    expect(wrapper.text()).toContain('Movies')
     expect(wrapper.text()).toContain('Shared games')
     expect(wrapper.text()).toContain('No description yet.')
   })
@@ -59,11 +59,13 @@ describe('CollectionsView', () => {
     expect(wrapper.text()).toContain('No collections yet')
   })
 
-  it('creates a collection and navigates to its detail page', async () => {
+  it('opens its create form on demand and navigates to inventory after creation', async () => {
     vi.mocked(collectionApi.createCollection).mockResolvedValue({ id: 42, name: 'Films', role: 'owner' })
     const wrapper = mountView()
     await flushPromises()
 
+    expect(wrapper.find('form').exists()).toBe(false)
+    await wrapper.get('button').trigger('click')
     await wrapper.get('input').setValue(' Films ')
     await wrapper.get('textarea').setValue('  Blu-rays  ')
     await wrapper.get('form').trigger('submit.prevent')

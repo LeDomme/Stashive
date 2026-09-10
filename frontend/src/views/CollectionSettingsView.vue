@@ -170,8 +170,7 @@ async function removeCollection(): Promise<void> {
 </script>
 
 <template>
-  <section class="page-content" aria-labelledby="collection-heading">
-    <RouterLink class="back-link" :to="{ name: 'collections' }">← All collections</RouterLink>
+  <section class="page-content settings-content" aria-labelledby="collection-heading">
     <p v-if="collections.detailLoading" class="state-message" role="status">Loading collection…</p>
     <div v-else-if="collections.detailError" class="empty-state state-error" role="alert">
       <h1>Collection unavailable</h1>
@@ -182,26 +181,27 @@ async function removeCollection(): Promise<void> {
     <template v-else-if="collections.collection">
       <div class="page-heading detail-heading">
         <div>
-          <p class="eyebrow">Collection <span class="role-pill">{{ collections.collection.role }}</span></p>
-          <h1 id="collection-heading">{{ collections.collection.name }}</h1>
-          <p>{{ collections.collection.description || 'No description yet.' }}</p>
-          <p class="owner-label">Owner: {{ memberDisplayName(collections.collection.owner) }} <span>({{ collections.collection.owner.username }})</span></p>
-        </div>
-        <div class="action-row">
-          <RouterLink class="button-secondary button-link" :to="{ name: 'locations', params: { collectionId: collections.collection.id } }">Locations</RouterLink>
-          <a class="button-secondary button-link" :href="`/collections/${collections.collection.id}/catalog`">Catalog</a>
-          <a class="button-secondary button-link" :href="`/collections/${collections.collection.id}/inventory`">Inventory</a>
-          <button v-if="canEdit" type="button" class="button-secondary" @click="beginEditing">Edit details</button>
-          <button v-if="canDelete" type="button" class="button-danger" @click="confirmingDelete = true">
-            Delete collection
-          </button>
+          <p class="eyebrow">Collection management</p>
+          <h1 id="collection-heading">Settings</h1>
+          <p>{{ collections.collection.name }} <span class="role-pill">{{ collections.collection.role }}</span></p>
         </div>
       </div>
 
+      <nav class="collection-nav" aria-label="Collection navigation">
+        <RouterLink :to="`/collections/${collections.collection.id}/inventory`">Inventory</RouterLink>
+        <RouterLink :to="`/collections/${collections.collection.id}/catalog`">Catalog</RouterLink>
+        <RouterLink :to="`/collections/${collections.collection.id}/locations`">Locations</RouterLink>
+        <RouterLink :to="`/collections/${collections.collection.id}/settings`">Settings</RouterLink>
+      </nav>
+
       <dl class="metadata-grid panel">
         <div><dt>Type</dt><dd>{{ collections.collection.type === 'movies' ? 'Movies' : collections.collection.type }}</dd></div>
-        <div><dt>Your role</dt><dd>{{ collections.collection.role }}</dd></div>
+        <div><dt>Access</dt><dd>{{ collections.collection.role }}</dd></div>
+        <div><dt>Owner</dt><dd>{{ memberDisplayName(collections.collection.owner) }} ({{ collections.collection.owner.username }})</dd></div>
       </dl>
+
+      <section v-if="canEdit" class="panel settings-section"><div class="section-heading"><div><p class="eyebrow">Collection</p><h2>Details</h2></div><button type="button" class="button-secondary" @click="beginEditing">Edit details</button></div>
+      <p>{{ collections.collection.description || 'No description yet.' }}</p></section>
 
       <section v-if="canManageMembers" class="members-panel panel" aria-labelledby="members-heading">
         <div class="section-heading">
@@ -257,12 +257,15 @@ async function removeCollection(): Promise<void> {
         <div class="action-row"><button type="submit" :disabled="saving">{{ saving ? 'Saving…' : 'Save changes' }}</button><button type="button" class="button-secondary" @click="editing = false">Cancel</button></div>
       </form>
 
-      <section v-if="confirmingDelete" class="confirmation panel" aria-labelledby="delete-heading">
-        <h2 id="delete-heading">Delete {{ collections.collection.name }}?</h2>
+      <section v-if="canDelete" class="confirmation panel danger-zone" aria-labelledby="delete-heading">
+        <p class="eyebrow">Danger zone</p>
+        <h2 id="delete-heading">Delete collection</h2>
         <p>This permanently removes the collection and its related data. This cannot be undone.</p>
+        <button v-if="!confirmingDelete" type="button" class="button-danger" @click="confirmingDelete = true">Delete collection</button>
+        <template v-else>
+        <h3>Delete {{ collections.collection.name }}?</h3>
         <p v-if="deleteError" class="form-error" role="alert">The collection could not be deleted. Please try again.</p>
-        <div class="action-row"><button type="button" class="button-danger" :disabled="deleting" @click="removeCollection">{{ deleting ? 'Deleting…' : 'Confirm delete' }}</button><button type="button" class="button-secondary" :disabled="deleting" @click="confirmingDelete = false">Cancel</button></div>
-      </section>
+        <div class="action-row"><button type="button" class="button-danger" :disabled="deleting" @click="removeCollection">{{ deleting ? 'Deleting…' : 'Confirm delete' }}</button><button type="button" class="button-secondary" :disabled="deleting" @click="confirmingDelete = false">Cancel</button></div></template></section>
     </template>
   </section>
 </template>
