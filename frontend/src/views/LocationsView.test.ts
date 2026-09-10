@@ -14,6 +14,9 @@ vi.mock('@/api/locations', () => ({ listLocationTree: vi.fn(), createLocation: v
 const router = createRouter({ history: createMemoryHistory(), routes: [
   { path: '/collections/:collectionId', name: 'collection-detail', component: LocationsView },
   { path: '/collections/:collectionId/locations', name: 'locations', component: LocationsView },
+  { path: '/collections/:collectionId/inventory', name: 'inventory', component: LocationsView },
+  { path: '/collections/:collectionId/catalog', name: 'catalog', component: LocationsView },
+  { path: '/collections/:collectionId/settings', name: 'collection-settings', component: LocationsView },
 ] })
 
 const node = (id: number, name: string, children: locationApi.LocationTreeNode[] = []): locationApi.LocationTreeNode => ({ id, collection_id: 1, parent_id: null, name, type: 'shelf', description: name === 'Shelf' ? 'Blu-rays' : null, children })
@@ -41,6 +44,18 @@ describe('LocationsView', () => {
     expect(wrapper.text()).toContain('Shelf')
     expect(wrapper.text()).toContain('Blu-rays')
     expect(wrapper.text().indexOf('House')).toBeLessThan(wrapper.text().indexOf('Garage'))
+    expect(wrapper.findAll('.location-type-badge').map((badge) => badge.text())).toEqual(['Shelf', 'Shelf', 'Shelf', 'Shelf'])
+  })
+
+  it('keeps the type badge separate and updates the selected location detail', async () => {
+    const wrapper = await mountView()
+    const shelf = wrapper.findAll('.location-node__content')[2]
+    await shelf.trigger('click')
+
+    expect(shelf.find('.location-node__name').text()).toBe('Shelf')
+    expect(shelf.find('.location-type-badge').text()).toBe('Shelf')
+    expect(shelf.classes()).toContain('is-selected')
+    expect(wrapper.get('[aria-labelledby="selected-location-heading"]').text()).toContain('Blu-rays')
   })
 
   it('shows the editable empty state and a read-only viewer state', async () => {
@@ -62,12 +77,13 @@ describe('LocationsView', () => {
   it.each(['owner', 'admin', 'editor'] as const)('shows mutation controls for %s', async (role) => {
     const wrapper = await mountView(role)
     expect(wrapper.findAll('button').map((button) => button.text())).toContain('Add child')
-    expect(wrapper.findAll('button').map((button) => button.text())).toContain('Edit')
+    expect(wrapper.findAll('button').map((button) => button.text())).toContain('Edit location')
   })
 
   it('creates a root and a selected child with typed payloads', async () => {
     vi.mocked(locationApi.createLocation).mockResolvedValue(tree[0])
     const wrapper = await mountView()
+    await wrapper.get('button').trigger('click')
     const forms = wrapper.findAll('form')
     await forms[0].get('input').setValue(' Root ')
     await forms[0].trigger('submit.prevent')
@@ -84,8 +100,7 @@ describe('LocationsView', () => {
   it('edits metadata, can make a child root, and excludes self and descendants from parents', async () => {
     vi.mocked(locationApi.updateLocation).mockResolvedValue(tree[0])
     const wrapper = await mountView()
-    const editButtons = wrapper.findAll('button').filter((button) => button.text() === 'Edit')
-    await editButtons[0].trigger('click')
+    await wrapper.findAll('button').find((button) => button.text() === 'Edit location')!.trigger('click')
     const form = wrapper.find('form')
     await form.get('input').setValue('House renamed')
     const parentSelect = form.findAll('select')[1]
@@ -98,11 +113,30 @@ describe('LocationsView', () => {
     expect(locationApi.updateLocation).toHaveBeenCalledWith(1, 1, { name: 'House renamed', type: 'shelf', description: null, parent_id: null })
   })
 
+  it('keeps root, child, and edit forms in the right master/detail workspace', async () => {
+    const wrapper = await mountView()
+    const treePanel = wrapper.get('[aria-label="Location tree"]')
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Edit location')!.trigger('click')
+    expect(wrapper.get('.locations-workspace__form').text()).toContain('Edit House')
+    expect(treePanel.exists()).toBe(true)
+    await wrapper.findAll('button').find((button) => button.text() === 'Cancel')!.trigger('click')
+    expect(wrapper.get('[aria-labelledby="selected-location-heading"]').text()).toContain('House')
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Add child')!.trigger('click')
+    expect(wrapper.get('.locations-workspace__form').text()).toContain('Parent: House')
+    await wrapper.findAll('button').find((button) => button.text() === 'Cancel')!.trigger('click')
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Add root location')!.trigger('click')
+    expect(wrapper.get('.locations-workspace__form').text()).toContain('Add root location')
+    expect(treePanel.exists()).toBe(true)
+  })
+
   it('requires delete confirmation and shows safe conflict errors', async () => {
     vi.mocked(locationApi.deleteLocation).mockRejectedValue(new ApiError(409))
     const wrapper = await mountView()
-    const deleteButtons = wrapper.findAll('button').filter((button) => button.text() === 'Delete')
-    await deleteButtons[2].trigger('click')
+    await wrapper.findAll('.location-node__content')[2].trigger('click')
+    await wrapper.find('[aria-label="Delete Shelf"]').trigger('click')
     expect(locationApi.deleteLocation).not.toHaveBeenCalled()
     await wrapper.findAll('button').find((button) => button.text() === 'Confirm delete')!.trigger('click')
     await flushPromises()

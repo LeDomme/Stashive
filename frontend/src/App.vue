@@ -1,20 +1,25 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView } from "vue-router";
 
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from "@/stores/auth";
+import AppMenu from "@/components/AppMenu.vue";
 
-const auth = useAuthStore()
+const auth = useAuthStore();
 </script>
 
 <template>
   <main class="application-shell">
-    <header class="application-header">
-      <RouterLink class="brand" :to="auth.user ? '/collections' : '/'" aria-label="Stashive home">Stashive</RouterLink>
-      <span class="brand-tagline">Physical collections, organized.</span>
-      <nav v-if="auth.user" class="application-nav" aria-label="Main navigation">
-        <RouterLink to="/collections">Collections</RouterLink>
-        <RouterLink v-if="auth.user.is_instance_admin" to="/admin/users">Users</RouterLink>
-      </nav>
+    <header v-if="auth.user" class="application-header">
+      <div class="application-header__content">
+        <RouterLink class="brand" to="/collections" aria-label="Stashive home">
+          <img src="/stashive-logo.png" alt="" class="brand__logo" />
+          <span
+            ><strong>Stashive</strong
+            ><small>Collect. Locate. Keep track.</small></span
+          >
+        </RouterLink>
+        <AppMenu />
+      </div>
     </header>
     <RouterView />
   </main>

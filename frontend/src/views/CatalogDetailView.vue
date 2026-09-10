@@ -236,11 +236,10 @@ async function remove() {
 </script>
 
 <template>
-  <section class="page-content">
-    <RouterLink :to="{ name: 'catalog', params: { collectionId: id() } }">← Catalog</RouterLink>
-    <p v-if="catalog.loading">Loading…</p>
-    <div v-else-if="catalog.entry">
-      <h1>{{ catalog.entry.display_title }}</h1>
+  <section class="page-content workspace-content">
+    <RouterLink class="back-link" :to="{ name: 'catalog', params: { collectionId: id() } }">← Catalog</RouterLink>
+    <div v-if="catalog.entry">
+      <div class="page-heading"><div><p class="eyebrow">Catalog entry</p><h1>{{ catalog.entry.display_title }}</h1></div></div>
       <p>Type: {{ catalog.entry.type }}</p>
       <p v-if="catalog.entry.sort_title">Sort title: {{ catalog.entry.sort_title }}</p>
       <p v-if="catalog.entry.notes">{{ catalog.entry.notes }}</p>
@@ -248,7 +247,7 @@ async function remove() {
         <button @click="beginEdit">Edit entry</button>
         <button class="button-danger" @click="confirming = true">Delete entry</button>
       </div>
-      <form v-if="editing" @submit.prevent="save">
+      <form v-if="editing" class="collection-form panel" @submit.prevent="save">
         <label>Display title<input v-model="title" required /></label>
         <label>Type<input v-model="type" required /></label>
         <label>Sort title<input v-model="sortTitle" /></label>
@@ -256,15 +255,15 @@ async function remove() {
         <button>Save</button>
         <button type="button" @click="editing = false">Cancel</button>
       </form>
-      <section v-if="confirming">
+      <section v-if="confirming" class="confirmation panel">
         <p>Deleting this catalog entry also removes all editions, identifiers and physical inventory copies belonging to it.</p>
         <button class="button-danger" @click="remove">Confirm delete</button>
         <button @click="confirming = false">Cancel</button>
       </section>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       <h2>Editions</h2>
-      <ul>
-        <li v-for="edition in catalog.editions" :key="edition.id">
+      <ul class="edition-list">
+        <li v-for="edition in catalog.editions" :key="edition.id" class="edition-card panel">
           <h3>{{ edition.display_name }}</h3>
           <span v-if="edition.release_date"> · {{ edition.release_date }}</span>
           <span v-if="edition.publisher"> · {{ edition.publisher }}</span>
@@ -286,8 +285,8 @@ async function remove() {
             <button>Save edition</button>
             <button type="button" @click="editingEdition = null">Cancel</button>
           </form>
-          <section>
-            <h4>Identifiers</h4>
+          <section class="identifier-section">
+            <h4>Barcodes &amp; IDs</h4>
             <ul>
               <li v-for="identifier in identifiers[edition.id] ?? []" :key="identifier.id">
                 <span>{{ identifier.type }}: {{ identifier.value }}</span>
@@ -319,7 +318,7 @@ async function remove() {
           </section>
         </li>
       </ul>
-      <form v-if="canEdit" @submit.prevent="add">
+      <form v-if="canEdit" class="collection-form panel" @submit.prevent="add">
         <label>Edition name<input v-model="name" required /></label>
         <button>Add edition</button>
       </form>

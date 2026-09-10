@@ -18,3 +18,14 @@ it('redirects a normal user away from the direct admin-users route', async () =>
 
   expect(router.currentRoute.value.name).toBe('collections')
 })
+
+it('uses collections as the authenticated home route', async () => {
+  const auth = useAuthStore()
+  auth.ready = true
+  auth.setupRequired = false
+  auth.user = { id: 1, username: 'owner', display_name: null, is_instance_admin: true }
+
+  await router.push('/')
+
+  expect(router.currentRoute.value.name).toBe('collections')
+})

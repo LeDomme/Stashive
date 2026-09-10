@@ -138,3 +138,22 @@ Required:
 - SQLite default
 - optional PostgreSQL setup
 - release smoke test
+
+## UX follow-up backlog
+
+### U03 — Inventory UX Simplification
+
+- provide one guided Add item flow while preserving the internal CatalogEntry → Edition → InventoryItem model
+- offer an explicit existing-title autocomplete choice; never merge based on a loose text heuristic
+- group the library by title with its editions, copies, and locations
+- add format, edition, and condition presets while retaining manual values
+- make Catalog an optional supporting view rather than a required preparation workflow
+
+### U04 — Smarter Location Semantics
+
+- model whether a location may contain child locations, inventory items, or both
+- define defaults for room, cabinet, shelf, box, and drawer before adding migrations or assignment rules
+
+### Artwork follow-up
+
+- support optional collection artwork and catalog-entry covers only after storage under `/app/data`, API shape, provider caching, and lifecycle have been designed

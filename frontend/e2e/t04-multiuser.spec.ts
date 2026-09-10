@@ -14,7 +14,7 @@ async function login(
   await page.getByLabel('Username').fill(username)
   await page.getByLabel('Password').fill(userPassword)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  if (expectSuccess) await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  if (expectSuccess) await expect(page.getByLabel('Open application menu')).toBeVisible()
 }
 
 async function createUser(page: Page, username: string, isInstanceAdmin = false): Promise<void> {
@@ -33,6 +33,9 @@ async function addMember(page: Page, username: string, role: 'admin' | 'editor' 
   await form.getByRole('button', { name: 'Add member' }).click()
   await expect(page.getByRole('list', { name: 'Collection members' }).getByText(`(${username})`)).toBeVisible()
 }
+async function openSettingsSection(page: Page, name: 'Sharing' | 'Ownership' | 'Danger zone'): Promise<void> {
+  await page.getByRole('button', { name }).click()
+}
 
 test.describe.serial('T04 multiuser collection access', () => {
   test('bootstraps the first instance admin and creates local test users', async ({ page }) => {
@@ -42,11 +45,12 @@ test.describe.serial('T04 multiuser collection access', () => {
     await page.getByLabel('Username').fill('ownerUser')
     await page.getByLabel('Password').fill(password)
     await page.getByRole('button', { name: 'Create administrator' }).click()
-    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    await expect(page.getByLabel('Open application menu')).toBeVisible()
     await page.goto('/setup')
-    await expect(page.getByRole('heading', { name: 'Stashive is ready to grow.' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Collections', exact: true })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Users' }).click()
+    await page.getByLabel('Open application menu').click()
+    await page.getByRole('link', { name: 'Administration' }).click()
     await createUser(page, 'adminUser')
     await createUser(page, 'editorUser')
     await createUser(page, 'viewerUser')
@@ -57,16 +61,22 @@ test.describe.serial('T04 multiuser collection access', () => {
   test('owner creates, shares, and manages a collection', async ({ page }) => {
     await login(page, 'owneruser')
     await page.goto('/collections')
+    await page.getByRole('button', { name: 'New collection' }).click()
     const form = page.locator('form').filter({ hasText: 'Create a collection' })
     await form.getByLabel('Name').fill('Browser collection')
     await form.getByRole('button', { name: 'Create collection' }).click()
-    await expect(page.getByRole('heading', { name: 'Browser collection' })).toBeVisible()
-    collectionPath = new URL(page.url()).pathname
+    await expect(page.getByRole('heading', { name: 'Inventory' })).toBeVisible()
+    collectionPath = new URL(page.url()).pathname.replace('/inventory', '')
+    await page.goto(`${collectionPath}/settings`)
 
     await expect(page.getByRole('button', { name: 'Edit details' })).toBeVisible()
+    await openSettingsSection(page, 'Danger zone')
     await expect(page.getByRole('button', { name: 'Delete collection' })).toBeVisible()
+    await openSettingsSection(page, 'Sharing')
     await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible()
+    await openSettingsSection(page, 'Ownership')
     await expect(page.getByRole('heading', { name: 'Transfer ownership' })).toBeVisible()
+    await openSettingsSection(page, 'Sharing')
     await addMember(page, 'adminuser', 'admin')
     await addMember(page, 'editoruser', 'editor')
     await addMember(page, 'vieweruser', 'viewer')
@@ -77,10 +87,11 @@ test.describe.serial('T04 multiuser collection access', () => {
 
   test('admin can manage members but cannot delete or transfer ownership', async ({ page }) => {
     await login(page, 'adminuser')
-    await page.goto(collectionPath)
-    await expect(page.getByRole('heading', { name: 'Browser collection' })).toBeVisible()
+    await page.goto(`${collectionPath}/settings`)
+    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Edit details' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Delete collection' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Danger zone' })).toHaveCount(0)
+    await openSettingsSection(page, 'Sharing')
     await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Transfer ownership' })).toHaveCount(0)
     const viewerRow = page.getByRole('listitem').filter({ hasText: '(vieweruser)' })
@@ -91,11 +102,11 @@ test.describe.serial('T04 multiuser collection access', () => {
   test('editor and viewer have read-only collection access', async ({ page }) => {
     for (const username of ['editoruser', 'vieweruser']) {
       await login(page, username)
-      await page.goto(collectionPath)
-      await expect(page.getByRole('heading', { name: 'Browser collection' })).toBeVisible()
+      await page.goto(`${collectionPath}/settings`)
+      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Edit details' })).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Delete collection' })).toHaveCount(0)
-      await expect(page.getByRole('heading', { name: 'Members' })).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Sharing' })).toHaveCount(0)
       await expect(page.getByRole('heading', { name: 'Transfer ownership' })).toHaveCount(0)
     }
   })
@@ -104,7 +115,7 @@ test.describe.serial('T04 multiuser collection access', () => {
     await login(page, 'outsideruser')
     await page.goto('/collections')
     await expect(page.getByText('Browser collection')).toHaveCount(0)
-    await page.goto(collectionPath)
+    await page.goto(`${collectionPath}/settings`)
     await expect(page.getByRole('heading', { name: 'Collection unavailable' })).toBeVisible()
 
     await login(page, 'secondinstanceadmin')
@@ -112,26 +123,30 @@ test.describe.serial('T04 multiuser collection access', () => {
     await expect(page.getByRole('heading', { name: 'Local users' })).toBeVisible()
     await page.goto('/collections')
     await expect(page.getByText('Browser collection')).toHaveCount(0)
-    await page.goto(collectionPath)
+    await page.goto(`${collectionPath}/settings`)
     await expect(page.getByRole('heading', { name: 'Collection unavailable' })).toBeVisible()
   })
 
   test('ownership transfer makes the new owner exclusive and keeps the old owner as admin', async ({ page }) => {
     await login(page, 'owneruser')
-    await page.goto(collectionPath)
+    await page.goto(`${collectionPath}/settings`)
+    await openSettingsSection(page, 'Ownership')
     const transferForm = page.locator('form').filter({ hasText: 'Review transfer' })
     await transferForm.getByLabel('New owner username').fill('adminuser')
     await transferForm.getByRole('button', { name: 'Review transfer' }).click()
     await expect(page.getByText('You will remain an admin member')).toBeVisible()
     await page.getByRole('button', { name: 'Confirm transfer' }).click()
     await expect(page.getByRole('heading', { name: 'Transfer ownership' })).toHaveCount(0)
-    await expect(page.getByText('Owner: adminuser (adminuser)')).toBeVisible()
+    await page.getByRole('button', { name: 'General' }).click()
+    await openSettingsSection(page, 'Sharing')
     await expect(page.getByRole('list', { name: 'Collection members' }).getByText('(owneruser)')).toBeVisible()
     await expect(page.getByRole('list', { name: 'Collection members' }).getByText('(adminuser)')).toHaveCount(0)
 
     await login(page, 'adminuser')
-    await page.goto(collectionPath)
+    await page.goto(`${collectionPath}/settings`)
+    await openSettingsSection(page, 'Danger zone')
     await expect(page.getByRole('button', { name: 'Delete collection' })).toBeVisible()
+    await openSettingsSection(page, 'Ownership')
     await expect(page.getByRole('heading', { name: 'Transfer ownership' })).toBeVisible()
   })
 
@@ -142,6 +157,7 @@ test.describe.serial('T04 multiuser collection access', () => {
     const managedRow = page.getByRole('listitem').filter({ hasText: '(manageduser)' })
     await managedRow.getByRole('button', { name: 'Disable' }).click()
     await page.getByRole('button', { name: 'Confirm disable' }).click()
+    await expect(managedRow.getByRole('button', { name: 'Enable' })).toBeVisible()
     await login(page, 'manageduser', password, false)
     await expect(page.getByText('Login failed. Check your credentials and try again.')).toBeVisible()
 
@@ -149,7 +165,7 @@ test.describe.serial('T04 multiuser collection access', () => {
     await page.goto('/admin/users')
     await managedRow.getByRole('button', { name: 'Enable' }).click()
     await login(page, 'manageduser')
-    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    await expect(page.getByLabel('Open application menu')).toBeVisible()
 
     const adminContext = await browser.newContext()
     const adminPage = await adminContext.newPage()
@@ -169,14 +185,33 @@ test.describe.serial('T04 multiuser collection access', () => {
     await page.getByRole('button', { name: 'Sign in' }).click()
     await expect(page.getByText('Login failed. Check your credentials and try again.')).toBeVisible()
     await login(page, 'manageduser', 'a changed sufficiently long password')
-    await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    await expect(page.getByLabel('Open application menu')).toBeVisible()
 
     const ownerRow = adminPage.getByRole('listitem').filter({ hasText: '(owneruser)' })
     await ownerRow.getByRole('button', { name: 'Disable' }).click()
-    await adminPage.getByRole('button', { name: 'Confirm disable' }).click()
+    const [ownerDisableResponse] = await Promise.all([
+      adminPage.waitForResponse((response) =>
+        response.url().includes('/api/admin/users/') &&
+        response.request().method() === 'PATCH' &&
+        response.request().postData() === '{"is_active":false}',
+      ),
+      adminPage.getByRole('button', { name: 'Confirm disable' }).click(),
+    ])
+    expect(ownerDisableResponse.status()).toBe(200)
+    await expect(ownerRow.getByText('Disabled', { exact: true })).toBeVisible()
     const ownRow = adminPage.getByRole('listitem').filter({ hasText: '(secondinstanceadmin)' })
-    await ownRow.getByRole('button', { name: 'Remove admin' }).click()
+    const [removeAdminResponse] = await Promise.all([
+      adminPage.waitForResponse((response) =>
+        response.url().includes('/api/admin/users/') &&
+        response.request().method() === 'PATCH' &&
+        response.request().postData() === '{"is_instance_admin":false}',
+      ),
+      ownRow.getByRole('button', { name: 'Remove admin' }).click(),
+    ])
+    expect(removeAdminResponse.status()).toBe(409)
     await expect(adminPage.getByText('At least one active instance admin must remain.')).toBeVisible()
+    await expect(ownRow.getByText('Instance admin', { exact: true })).toBeVisible()
+    await expect(ownRow.getByRole('button', { name: 'Remove admin' })).toBeVisible()
     await expect(adminPage.getByRole('heading', { name: 'Local users' })).toBeVisible()
     await adminContext.close()
   })

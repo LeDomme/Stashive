@@ -173,8 +173,7 @@ function formatDate(value: string): string {
         <button type="submit" :disabled="creating">{{ creating ? 'Creating…' : 'Create user' }}</button>
       </form>
 
-      <p v-if="adminUsers.loading" class="state-message" role="status">Loading users…</p>
-      <div v-else-if="adminUsers.error" class="empty-state state-error" role="alert"><h2>Users unavailable</h2><p>{{ errorMessage(adminUsers.error) }}</p></div>
+      <div v-if="adminUsers.error" class="empty-state state-error" role="alert"><h2>Users unavailable</h2><p>{{ errorMessage(adminUsers.error) }}</p></div>
       <section v-else class="users-panel panel" aria-labelledby="user-list-heading">
         <h2 id="user-list-heading">Users</h2>
         <p v-if="passwordSuccess" class="success-message" role="status">{{ passwordSuccess }}</p>
