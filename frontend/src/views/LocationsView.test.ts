@@ -113,6 +113,25 @@ describe('LocationsView', () => {
     expect(locationApi.updateLocation).toHaveBeenCalledWith(1, 1, { name: 'House renamed', type: 'shelf', description: null, parent_id: null })
   })
 
+  it('keeps root, child, and edit forms in the right master/detail workspace', async () => {
+    const wrapper = await mountView()
+    const treePanel = wrapper.get('[aria-label="Location tree"]')
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Edit location')!.trigger('click')
+    expect(wrapper.get('.locations-workspace__form').text()).toContain('Edit House')
+    expect(treePanel.exists()).toBe(true)
+    await wrapper.findAll('button').find((button) => button.text() === 'Cancel')!.trigger('click')
+    expect(wrapper.get('[aria-labelledby="selected-location-heading"]').text()).toContain('House')
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Add child')!.trigger('click')
+    expect(wrapper.get('.locations-workspace__form').text()).toContain('Parent: House')
+    await wrapper.findAll('button').find((button) => button.text() === 'Cancel')!.trigger('click')
+
+    await wrapper.findAll('button').find((button) => button.text() === 'Add root location')!.trigger('click')
+    expect(wrapper.get('.locations-workspace__form').text()).toContain('Add root location')
+    expect(treePanel.exists()).toBe(true)
+  })
+
   it('requires delete confirmation and shows safe conflict errors', async () => {
     vi.mocked(locationApi.deleteLocation).mockRejectedValue(new ApiError(409))
     const wrapper = await mountView()

@@ -63,13 +63,13 @@ afterEach(() => {
 })
 
 describe('CollectionDetailView', () => {
-  it('renders collection details and the effective role', async () => {
+  it('renders collection settings without the redundant access summary', async () => {
     const wrapper = await mountView('owner')
 
     expect(wrapper.get('h1').text()).toBe('Settings')
     expect(wrapper.text()).toContain('Blu-rays')
-    expect(wrapper.text()).toContain('Access')
-    expect(wrapper.text()).toContain('owner')
+    expect(wrapper.text()).not.toContain('Access')
+    expect(wrapper.find('.metadata-grid').exists()).toBe(false)
   })
 
   it('switches settings sections while preserving the active navigation state', async () => {
@@ -88,9 +88,10 @@ describe('CollectionDetailView', () => {
     expect(wrapper.findAll('a').find((link) => link.text() === 'Locations')!.attributes('href')).toBe('/collections/1/locations')
   })
 
-  it('shows the owner separately from safe member identity data', async () => {
+  it('keeps owner context in ownership while members stay separate', async () => {
     const wrapper = await mountView('owner')
 
+    await wrapper.findAll('button').find((button) => button.text() === 'Ownership')!.trigger('click')
     expect(wrapper.text()).toContain('Collection Owner (owner)')
     expect(wrapper.get('[aria-label="Collection members"]').text()).toContain('Member Name(member)')
     expect(wrapper.get('[aria-label="Collection members"]').text()).not.toContain('Collection Owner')
@@ -225,7 +226,6 @@ describe('CollectionDetailView', () => {
 
     expect(collectionApi.transferOwnership).toHaveBeenCalledWith(1, 'new-owner')
     expect(wrapper.text()).toContain('New Owner (new-owner)')
-    expect(wrapper.text()).toContain('admin')
     expect(wrapper.get('[aria-labelledby="transfer-heading"]').attributes('style')).toContain('display: none')
   })
 

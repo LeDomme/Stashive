@@ -201,15 +201,8 @@ watch(() => route.params.collectionId, load, { immediate: true });
     class="page-content workspace-content"
     aria-labelledby="locations-heading"
   >
-    <p
-      v-if="collections.detailLoading || locations.loading"
-      class="state-message"
-      role="status"
-    >
-      Loading locations…
-    </p>
     <div
-      v-else-if="collections.detailError || locations.error"
+      v-if="collections.detailError || locations.error"
       class="empty-state state-error"
       role="alert"
     >
@@ -245,14 +238,15 @@ watch(() => route.params.collectionId, load, { immediate: true });
           >Settings</RouterLink
         >
       </nav>
-      <div v-if="locations.tree.length" class="management-layout">
+      <div v-if="locations.tree.length || creatingRoot" class="locations-workspace">
+      <div class="management-layout">
         <aside class="management-sidebar panel" aria-label="Location tree">
           <h2>Storage tree</h2>
           <ul class="location-tree">
             <LocationTreeNode v-for="node in locations.tree" :key="node.id" :node="node" :selected-id="selected?.id ?? null" @select="selectNode" />
           </ul>
         </aside>
-        <section class="management-panel panel" aria-labelledby="selected-location-heading">
+        <section v-if="!creatingRoot && !childParent && !editing && !deleting" class="management-panel panel" aria-labelledby="selected-location-heading">
           <template v-if="selected">
             <p class="eyebrow">Selected location</p><h2 id="selected-location-heading">{{ selected.name }}</h2>
             <dl class="metadata-grid"><div><dt>Type</dt><dd>{{ selected ? typeLabels[selected.type] : '' }}</dd></div><div><dt>Parent</dt><dd>{{ selected?.parent_id === null ? 'Root location' : parentOptions.find((option) => option.id === selected?.parent_id)?.path ?? 'Location' }}</dd></div><div v-if="selected?.description"><dt>Description</dt><dd>{{ selected.description }}</dd></div></dl>
@@ -267,7 +261,7 @@ watch(() => route.params.collectionId, load, { immediate: true });
       </div>
       <form
         v-if="creatingRoot"
-        class="collection-form panel modal-panel"
+        class="collection-form panel modal-panel locations-workspace__form"
         @submit.prevent="saveCreate"
       >
         <h2>Add root location</h2>
@@ -300,10 +294,11 @@ watch(() => route.params.collectionId, load, { immediate: true });
       </form>
       <form
         v-if="childParent"
-        class="collection-form panel modal-panel"
+        class="collection-form panel modal-panel locations-workspace__form"
         @submit.prevent="saveCreate"
       >
         <h2>Add child to {{ childParent.name }}</h2>
+        <p class="location-form-context">Parent: {{ childParent.name }}</p>
         <label>Name<input v-model="name" required maxlength="255" /></label
         ><label
           >Type<select v-model="type">
@@ -333,7 +328,7 @@ watch(() => route.params.collectionId, load, { immediate: true });
       </form>
       <form
         v-if="editing"
-        class="collection-form panel"
+        class="collection-form panel locations-workspace__form"
         @submit.prevent="saveEdit"
       >
         <h2>Edit {{ editing.name }}</h2>
@@ -378,7 +373,7 @@ watch(() => route.params.collectionId, load, { immediate: true });
       <p v-if="actionError" class="form-error" role="alert">
         {{ actionError }}
       </p>
-      <div v-if="locations.tree.length === 0" class="empty-state">
+      <div v-if="locations.tree.length === 0 && !creatingRoot" class="empty-state">
         <h2>No locations yet</h2>
         <p v-if="canEdit">
           Create a root location to start your physical storage tree.
@@ -387,7 +382,7 @@ watch(() => route.params.collectionId, load, { immediate: true });
       </div>
       <section
         v-if="deleting"
-        class="confirmation panel"
+        class="confirmation panel locations-workspace__form"
         aria-labelledby="delete-location-heading"
       >
         <h2 id="delete-location-heading">Delete {{ deleting.name }}?</h2>
@@ -413,6 +408,12 @@ watch(() => route.params.collectionId, load, { immediate: true });
           </button>
         </div>
       </section>
+      </div>
+      <div v-if="locations.tree.length === 0 && !creatingRoot" class="empty-state">
+        <h2>No locations yet</h2>
+        <p v-if="canEdit">Create a root location to start your physical storage tree.</p>
+        <p v-else>No locations have been created for this collection.</p>
+      </div>
     </template>
   </section>
 </template>

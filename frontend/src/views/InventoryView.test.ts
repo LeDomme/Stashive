@@ -19,6 +19,7 @@ function form(wrapper:VueWrapper,text:string){const found=wrapper.findAll('form'
 afterEach(()=>vi.clearAllMocks())
 describe('InventoryView',()=>{
  it('renders ordered copies with title, edition, metadata and location state',async()=>{const w=await view();expect(w.text()).toContain('Blade Runner');expect(w.text()).toContain('UHD Blu-ray');expect(w.text()).toContain('Good');expect(w.text()).toContain('Shelf copy');expect(w.text()).toContain('Unassigned');expect(w.text()).toContain('House > Basement > Box');expect(w.findAll('.inventory-list > li').map(item=>item.text())).toHaveLength(2)})
+ it('shows a singular or plural result count in the filter toolbar',async()=>{expect((await view('viewer',[first])).get('.filter-toolbar__summary').text()).toBe('1 physical copy');expect((await view('viewer')).get('.filter-toolbar__summary').text()).toBe('2 physical copies')})
  it('shows role-aware empty state',async()=>{expect((await view('owner',[])).text()).toContain('Add physical copy');expect((await view('viewer',[])).text()).not.toContain('Add physical copy')})
  it.each(['owner','admin','editor'] as const)('%s can create, edit and delete copies',async role=>{const w=await view(role);expect(button(w,'Add physical copy')).toBeDefined();expect(button(w,'Edit copy')).toBeDefined();expect(button(w,'Delete copy')).toBeDefined()})
  it('keeps viewers read-only',async()=>{const w=await view('viewer');expect(button(w,'Add physical copy')).toBeUndefined();expect(button(w,'Edit copy')).toBeUndefined();expect(button(w,'Delete copy')).toBeUndefined()})

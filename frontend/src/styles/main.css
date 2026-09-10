@@ -716,3 +716,26 @@ h1 {
   .filter-toolbar .toolbar-field, .filter-toolbar__actions { width: 100%; }
   .filter-toolbar__actions > button { flex: 1; justify-content: center; }
 }
+
+/* U02e: compact filter summary and a stable locations master/detail workspace. */
+.filter-toolbar { display: block; padding: 0; overflow: hidden; }
+.filter-toolbar__controls { display: flex; flex-wrap: wrap; align-items: end; gap: .65rem; padding: .8rem .9rem; }
+.filter-toolbar__controls .toolbar-field { min-width: 10.5rem; }
+.filter-toolbar__controls .toolbar-field > span:not(.visually-hidden) { color: #a8cabc; font-size: .76rem; font-weight: 650; letter-spacing: .02em; }
+.filter-toolbar__controls select, .filter-toolbar__controls button, .filter-toolbar__controls .toolbar-checkbox { min-height: 2.3rem; font-size: .88rem; font-weight: 650; }
+.filter-toolbar__controls .toolbar-checkbox { padding: .35rem .6rem; font-weight: 600; }
+.filter-toolbar__controls .button-secondary { color: #cce7da; border: 1px solid #3e8067; background: rgb(16 230 161 / .08); }
+.filter-toolbar__controls .button-secondary:hover { background: rgb(16 230 161 / .16); }
+.filter-toolbar__summary { margin: 0; padding: .65rem .9rem; border-top: 1px solid var(--border); color: #a8cabc; font-size: .82rem; font-weight: 600; }
+
+.locations-workspace { display: grid; grid-template-columns: minmax(19rem, .9fr) minmax(0, 1.8fr); gap: 1rem; align-items: start; margin-bottom: 1.25rem; }
+.locations-workspace .management-layout { display: contents; }
+.locations-workspace .management-sidebar { grid-column: 1; grid-row: 1; }
+.locations-workspace .management-panel, .locations-workspace__form { grid-column: 2; grid-row: 1; min-width: 0; margin: 0; }
+.location-form-context { margin-top: -.25rem; color: var(--stashive-mint); font-size: .9rem; font-weight: 650; }
+
+@media (max-width: 48rem) {
+  .filter-toolbar__controls .toolbar-field, .filter-toolbar__controls .filter-toolbar__actions { width: 100%; }
+  .locations-workspace { grid-template-columns: 1fr; }
+  .locations-workspace .management-sidebar, .locations-workspace .management-panel, .locations-workspace__form { grid-column: 1; grid-row: auto; }
+}

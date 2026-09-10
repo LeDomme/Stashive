@@ -209,11 +209,8 @@ async function removeCollection(): Promise<void> {
     class="page-content settings-content"
     aria-labelledby="collection-heading"
   >
-    <p v-if="collections.detailLoading" class="state-message" role="status">
-      Loading collection…
-    </p>
     <div
-      v-else-if="collections.detailError"
+      v-if="collections.detailError"
       class="empty-state state-error"
       role="alert"
     >
@@ -229,12 +226,8 @@ async function removeCollection(): Promise<void> {
     <template v-else-if="collections.collection">
       <div class="page-heading detail-heading">
         <div>
-          <p class="eyebrow">Collection management</p>
+          <p class="eyebrow">{{ collections.collection.name }}</p>
           <h1 id="collection-heading">Settings</h1>
-          <p>
-            {{ collections.collection.name }}
-            <span class="role-pill">{{ collections.collection.role }}</span>
-          </p>
         </div>
       </div>
 
@@ -262,31 +255,7 @@ async function removeCollection(): Promise<void> {
         </nav>
         <div class="management-panel">
 
-      <template v-if="activeSection === 'general'"><dl class="metadata-grid panel">
-        <div>
-          <dt>Type</dt>
-          <dd>
-            {{
-              collections.collection.type === "movies"
-                ? "Movies"
-                : collections.collection.type
-            }}
-          </dd>
-        </div>
-        <div>
-          <dt>Access</dt>
-          <dd>{{ collections.collection.role }}</dd>
-        </div>
-        <div>
-          <dt>Owner</dt>
-          <dd>
-            {{ memberDisplayName(collections.collection.owner) }} ({{
-              collections.collection.owner.username
-            }})
-          </dd>
-        </div>
-      </dl>
-
+      <template v-if="activeSection === 'general'">
       <section v-if="canEdit" class="panel settings-section">
         <div class="section-heading">
           <div>
@@ -404,6 +373,7 @@ async function removeCollection(): Promise<void> {
       >
         <p class="eyebrow">Owner action</p>
         <h2 id="transfer-heading">Transfer ownership</h2>
+        <p>Current owner: {{ memberDisplayName(collections.collection.owner) }} ({{ collections.collection.owner.username }})</p>
         <p>Transfer to an existing local user by exact username.</p>
         <form
           v-if="!confirmingTransfer"

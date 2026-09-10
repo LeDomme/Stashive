@@ -47,7 +47,7 @@ test.describe.serial('T04 multiuser collection access', () => {
     await page.getByRole('button', { name: 'Create administrator' }).click()
     await expect(page.getByLabel('Open application menu')).toBeVisible()
     await page.goto('/setup')
-    await expect(page.getByRole('heading', { name: 'Collections' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Collections', exact: true })).toBeVisible()
 
     await page.getByLabel('Open application menu').click()
     await page.getByRole('link', { name: 'Administration' }).click()
@@ -138,7 +138,6 @@ test.describe.serial('T04 multiuser collection access', () => {
     await page.getByRole('button', { name: 'Confirm transfer' }).click()
     await expect(page.getByRole('heading', { name: 'Transfer ownership' })).toHaveCount(0)
     await page.getByRole('button', { name: 'General' }).click()
-    await expect(page.getByText('adminuser (adminuser)')).toBeVisible()
     await openSettingsSection(page, 'Sharing')
     await expect(page.getByRole('list', { name: 'Collection members' }).getByText('(owneruser)')).toBeVisible()
     await expect(page.getByRole('list', { name: 'Collection members' }).getByText('(adminuser)')).toHaveCount(0)

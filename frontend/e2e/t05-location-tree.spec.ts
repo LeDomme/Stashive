@@ -90,7 +90,7 @@ test.describe.serial('T05 location tree', () => {
   test('editor can mutate locations while viewer remains read-only', async ({ page }) => {
     await login(page, 'editoruser')
     await page.goto(locationsPath)
-    await expect(page.getByRole('heading', { name: 'Locations' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Locations', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add root location' })).toBeVisible()
     await createRoot(page, 'Editor shelf', 'shelf')
     await page.locator('.location-node__content').filter({ hasText: 'Editor shelf' }).first().click()
@@ -99,7 +99,7 @@ test.describe.serial('T05 location tree', () => {
 
     await login(page, 'vieweruser')
     await page.goto(locationsPath)
-    await expect(page.getByRole('heading', { name: 'Locations' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Locations', exact: true })).toBeVisible()
     await expect(page.getByText('House')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Add root location' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /Add child to/ })).toHaveCount(0)

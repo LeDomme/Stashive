@@ -80,8 +80,7 @@ function closeCreate(): void {
       <div class="action-row"><button type="submit" :disabled="creating">{{ creating ? 'Creating…' : 'Create collection' }}</button><button type="button" class="button-secondary" :disabled="creating" @click="closeCreate">Cancel</button></div>
     </form>
 
-    <p v-if="collections.listLoading" class="state-message" role="status">Loading collections…</p>
-    <p v-else-if="collections.listError" class="state-message state-error" role="alert">
+    <p v-if="collections.listError" class="state-message state-error" role="alert">
       Collections could not be loaded. Please try again.
     </p>
     <div v-else-if="!hasCollections" class="empty-state">

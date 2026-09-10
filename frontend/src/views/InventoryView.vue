@@ -180,10 +180,7 @@ async function remove(itemId: number) {
 </script>
 <template>
   <section class="page-content workspace-content">
-    <p v-if="collections.detailLoading || inventory.loading" role="status">
-      Loading inventory…
-    </p>
-    <template v-else-if="collections.collection"
+    <template v-if="collections.collection"
       ><div class="page-heading">
         <div>
           <p class="eyebrow">{{ collections.collection.name }}</p>
@@ -203,7 +200,8 @@ async function remove(itemId: number) {
           >Settings</RouterLink
         >
       </nav>
-      <form class="filter-toolbar panel" @submit.prevent="load">
+      <section class="filter-toolbar panel">
+      <form class="filter-toolbar__controls" @submit.prevent="load">
         <label class="toolbar-field"
           ><span>Filter</span><select
             v-model="filter"
@@ -227,6 +225,8 @@ async function remove(itemId: number) {
           <button v-if="filter !== 'all' || filterLocation || !descendants" type="button" class="button-ghost button-compact" @click="clearFilters">Clear</button>
         </div>
       </form>
+      <p class="filter-toolbar__summary">{{ inventory.items.length }} physical {{ inventory.items.length === 1 ? 'copy' : 'copies' }}</p>
+      </section>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       <form
         v-if="adding"
