@@ -2,8 +2,11 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.admin_users import router as admin_users_router
 from app.api.auth import router as auth_router
@@ -36,3 +39,17 @@ app.include_router(admin_users_router, prefix="/api")
 app.include_router(collections_router, prefix="/api")
 app.include_router(locations_router, prefix="/api")
 app.include_router(inventory_router, prefix="/api")
+
+FRONTEND_DIST = Path(__file__).resolve().parent / "static"
+if FRONTEND_DIST.is_dir():
+    app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def frontend(request: Request, full_path: str) -> FileResponse:
+        """Serve the SPA for browser routes without intercepting API paths."""
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not found")
+        candidate = FRONTEND_DIST / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        return FileResponse(FRONTEND_DIST / "index.html")

@@ -1,0 +1,13 @@
+services:
+  stashive:
+    image: ${STASHIVE_IMAGE:-ghcr.io/ledomme/stashive:edge}
+    container_name: stashive
+    ports:
+      - "8000:8000"
+    environment:
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+    volumes:
+      - stashive-data:/app/data
+    restart: unless-stopped
+volumes:
+  stashive-data:

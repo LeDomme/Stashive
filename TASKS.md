@@ -140,6 +140,8 @@ Milestone: after T06, before T07
 
 Implement a preview-ready multi-stage Docker image that builds the Vue frontend, persists `/app/data` including SQLite, runs Alembic migrations at startup, exposes `/api/health`, and includes minimal Docker Compose, container smoke coverage, and a GitHub Actions build/push workflow for `ghcr.io/ledomme/stashive`.
 
+Status: complete.
+
 ## T07 — Movie Domain
 
 Milestone: v0.2
