@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@/api/client'
+import type { Edition, Identifier } from '@/api/catalog'
 import * as api from '@/api/catalog'
 import * as collectionsApi from '@/api/collections'
 import CatalogDetailView from './CatalogDetailView.vue'
@@ -18,12 +19,18 @@ const router = createRouter({
   ],
 })
 const entry = { id: 2, collection_id: 1, display_title: 'Alien', type: 'movie', sort_title: 'Alien, The', notes: 'Classic' }
-const edition = { id: 3, catalog_entry_id: 2, display_name: 'Director\'s Cut', release_date: '2024-03-15', publisher: 'Stashive Pictures', region: 'B', language: 'German' }
+const edition: Edition = { id: 3, catalog_entry_id: 2, display_name: 'Director\'s Cut', release_date: '2024-03-15', publisher: 'Stashive Pictures', region: 'B', language: 'German' }
+const identifier: Identifier = { id: 4, edition_id: 3, type: 'EAN', value: '1234567890123', source: 'Manual' }
 
-async function view(role: 'owner' | 'admin' | 'editor' | 'viewer' = 'owner', editions = [edition]) {
+async function view(
+  role: 'owner' | 'admin' | 'editor' | 'viewer' = 'owner',
+  editions: Edition[] = [edition],
+  identifiers: Record<number, Identifier[]> = { 3: [identifier] },
+) {
   vi.mocked(collectionsApi.getCollection).mockResolvedValue({ id: 1, name: 'Films', type: 'movies', description: null, role, owner: { id: 1, username: 'owner', display_name: null } })
   vi.mocked(api.getCatalog).mockResolvedValue(entry)
   vi.mocked(api.listEditions).mockResolvedValue(editions)
+  vi.mocked(api.listIdentifiers).mockImplementation(async (_collectionId, editionId) => identifiers[editionId] ?? [])
   await router.push('/collections/1/catalog/2')
   const wrapper = mount(CatalogDetailView, { global: { plugins: [createPinia(), router] } })
   await flushPromises()
@@ -43,6 +50,12 @@ function input(wrapper: VueWrapper, label: string) {
 function editionForm(wrapper: VueWrapper) {
   const form = wrapper.findAll('form').find((candidate) => candidate.text().includes('Save edition'))
   if (!form) throw new Error('Edition form was not found')
+  return form
+}
+
+function identifierForm(wrapper: VueWrapper) {
+  const form = wrapper.findAll('form').find((candidate) => candidate.text().includes('identifier'))
+  if (!form) throw new Error('Identifier form was not found')
   return form
 }
 
@@ -249,5 +262,209 @@ describe('CatalogDetailView', () => {
     expect(wrapper.text()).toContain("Director's Cut")
     expect(button(wrapper, 'Confirm delete')).toBeDefined()
     expect(wrapper.get('[role="alert"]').text()).toBe('This change conflicts with existing data.')
+  })
+
+  it('renders identifiers beneath their matching edition and omits an absent source', async () => {
+    const secondEdition: Edition = { ...edition, id: 5, display_name: 'UHD edition' }
+    const noSourceIdentifier: Identifier = { id: 6, edition_id: 5, type: 'UPC', value: '012345678905', source: null }
+    const wrapper = await view('owner', [edition, secondEdition], { 3: [identifier], 5: [noSourceIdentifier] })
+
+    const editions = wrapper.findAll('li').filter((candidate) => candidate.find('h3').exists())
+    expect(editions[0].text()).toContain('EAN: 1234567890123')
+    expect(editions[0].text()).toContain('Manual')
+    expect(editions[0].text()).not.toContain('012345678905')
+    expect(editions[1].text()).toContain('UPC: 012345678905')
+    expect(editions[1].text()).not.toContain('Manual')
+  })
+
+  it.each(['owner', 'admin', 'editor'] as const)('%s can manage identifiers', async (role) => {
+    const wrapper = await view(role)
+
+    expect(button(wrapper, 'Add identifier')).toBeDefined()
+    expect(button(wrapper, 'Edit identifier')).toBeDefined()
+    expect(button(wrapper, 'Delete identifier')).toBeDefined()
+  })
+
+  it('keeps viewers read-only for identifiers', async () => {
+    const wrapper = await view('viewer')
+
+    expect(wrapper.text()).toContain('EAN: 1234567890123')
+    expect(button(wrapper, 'Add identifier')).toBeUndefined()
+    expect(button(wrapper, 'Edit identifier')).toBeUndefined()
+    expect(button(wrapper, 'Delete identifier')).toBeUndefined()
+  })
+
+  it('creates an identifier with type, value, and source without reloading the page', async () => {
+    const created: Identifier = { id: 7, edition_id: 3, type: 'UPC', value: '012345678905', source: 'Imported' }
+    vi.mocked(api.createIdentifier).mockResolvedValue(created)
+    const wrapper = await view()
+    await button(wrapper, 'Add identifier')?.trigger('click')
+    await input(wrapper, 'Identifier type').setValue(' UPC ')
+    await input(wrapper, 'Identifier value').setValue(' 012345678905 ')
+    await input(wrapper, 'Identifier source').setValue(' Imported ')
+    await identifierForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    expect(api.createIdentifier).toHaveBeenCalledWith(1, 3, { type: 'UPC', value: '012345678905', source: 'Imported' })
+    expect(api.getCatalog).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('UPC: 012345678905')
+    expect(button(wrapper, 'Create identifier')).toBeUndefined()
+  })
+
+  it('creates an identifier with an explicit null source when source is omitted', async () => {
+    vi.mocked(api.createIdentifier).mockResolvedValue({ id: 7, edition_id: 3, type: 'UPC', value: '012345678905', source: null })
+    const wrapper = await view()
+    await button(wrapper, 'Add identifier')?.trigger('click')
+    await input(wrapper, 'Identifier type').setValue('UPC')
+    await input(wrapper, 'Identifier value').setValue('012345678905')
+    await identifierForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    expect(api.createIdentifier).toHaveBeenCalledWith(1, 3, { type: 'UPC', value: '012345678905', source: null })
+  })
+
+  it.each(['Identifier type', 'Identifier value'] as const)('does not create an identifier with whitespace-only %s', async (label) => {
+    const wrapper = await view()
+    await button(wrapper, 'Add identifier')?.trigger('click')
+    await input(wrapper, 'Identifier type').setValue(label === 'Identifier type' ? '   ' : 'EAN')
+    await input(wrapper, 'Identifier value').setValue(label === 'Identifier value' ? '   ' : '1234567890123')
+    await identifierForm(wrapper).trigger('submit')
+
+    expect(api.createIdentifier).not.toHaveBeenCalled()
+    expect(button(wrapper, 'Create identifier')).toBeDefined()
+    expect(wrapper.get('[role="alert"]').text()).toBe('Identifier type and value are required.')
+  })
+
+  it('shows a safe duplicate message after a create conflict', async () => {
+    vi.mocked(api.createIdentifier).mockRejectedValue(new ApiError(409))
+    const wrapper = await view()
+    await button(wrapper, 'Add identifier')?.trigger('click')
+    await input(wrapper, 'Identifier type').setValue('EAN')
+    await input(wrapper, 'Identifier value').setValue('1234567890123')
+    await identifierForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    expect(button(wrapper, 'Create identifier')).toBeDefined()
+    expect(wrapper.get('[role="alert"]').text()).toBe('This identifier already exists for this edition.')
+  })
+
+  it.each([
+    [403, 'You do not have permission for this action.'],
+    [422, 'Check the entered identifier details.'],
+    [500, 'This action could not be completed. Please try again.'],
+  ])('shows a safe identifier create error for HTTP %i', async (status, expectedMessage) => {
+    vi.mocked(api.createIdentifier).mockRejectedValue(new ApiError(status))
+    const wrapper = await view()
+    await button(wrapper, 'Add identifier')?.trigger('click')
+    await input(wrapper, 'Identifier type').setValue('EAN')
+    await input(wrapper, 'Identifier value').setValue('1234567890123')
+    await identifierForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.get('[role="alert"]').text()).toBe(expectedMessage)
+  })
+
+  it('edits all identifier fields and updates the local identifier list', async () => {
+    const updated: Identifier = { ...identifier, type: 'UPC', value: '012345678905', source: 'Verified' }
+    vi.mocked(api.updateIdentifier).mockResolvedValue(updated)
+    const wrapper = await view()
+    await button(wrapper, 'Edit identifier')?.trigger('click')
+
+    expect(input(wrapper, 'Identifier type').element.value).toBe('EAN')
+    expect(input(wrapper, 'Identifier value').element.value).toBe('1234567890123')
+    expect(input(wrapper, 'Identifier source').element.value).toBe('Manual')
+    await input(wrapper, 'Identifier type').setValue('UPC')
+    await input(wrapper, 'Identifier value').setValue('012345678905')
+    await input(wrapper, 'Identifier source').setValue('Verified')
+    await identifierForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    expect(api.updateIdentifier).toHaveBeenCalledWith(1, 3, 4, { type: 'UPC', value: '012345678905', source: 'Verified' })
+    expect(wrapper.text()).toContain('UPC: 012345678905')
+    expect(wrapper.text()).toContain('Verified')
+    expect(button(wrapper, 'Save identifier')).toBeUndefined()
+  })
+
+  it('sends an explicit null source when an identifier source is cleared', async () => {
+    vi.mocked(api.updateIdentifier).mockResolvedValue({ ...identifier, source: null })
+    const wrapper = await view()
+    await button(wrapper, 'Edit identifier')?.trigger('click')
+    await input(wrapper, 'Identifier source').setValue('')
+    await identifierForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    expect(api.updateIdentifier).toHaveBeenCalledWith(1, 3, 4, { type: 'EAN', value: '1234567890123', source: null })
+  })
+
+  it('cancels identifier editing without mutation', async () => {
+    const wrapper = await view()
+    await button(wrapper, 'Edit identifier')?.trigger('click')
+    await input(wrapper, 'Identifier value').setValue('Changed')
+    await button(wrapper, 'Cancel')?.trigger('click')
+
+    expect(api.updateIdentifier).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('EAN: 1234567890123')
+    expect(button(wrapper, 'Save identifier')).toBeUndefined()
+  })
+
+  it.each(['Identifier type', 'Identifier value'] as const)('does not update an identifier with whitespace-only %s', async (label) => {
+    const wrapper = await view()
+    await button(wrapper, 'Edit identifier')?.trigger('click')
+    await input(wrapper, label).setValue('   ')
+    await identifierForm(wrapper).trigger('submit')
+
+    expect(api.updateIdentifier).not.toHaveBeenCalled()
+    expect(button(wrapper, 'Save identifier')).toBeDefined()
+    expect(wrapper.get('[role="alert"]').text()).toBe('Identifier type and value are required.')
+  })
+
+  it('keeps identifier and edit input visible after an update duplicate conflict', async () => {
+    vi.mocked(api.updateIdentifier).mockRejectedValue(new ApiError(409))
+    const wrapper = await view()
+    await button(wrapper, 'Edit identifier')?.trigger('click')
+    await input(wrapper, 'Identifier value').setValue('Duplicate value')
+    await identifierForm(wrapper).trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('EAN: 1234567890123')
+    expect(input(wrapper, 'Identifier value').element.value).toBe('Duplicate value')
+    expect(wrapper.get('[role="alert"]').text()).toBe('This identifier already exists for this edition.')
+  })
+
+  it('requires confirmation before deleting an identifier and supports cancellation', async () => {
+    const wrapper = await view()
+    await button(wrapper, 'Delete identifier')?.trigger('click')
+
+    expect(api.deleteIdentifier).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Delete this identifier?')
+    await button(wrapper, 'Cancel')?.trigger('click')
+    expect(api.deleteIdentifier).not.toHaveBeenCalled()
+    expect(button(wrapper, 'Confirm delete identifier')).toBeUndefined()
+  })
+
+  it('deletes the confirmed identifier once without closing its edition or catalog entry', async () => {
+    vi.mocked(api.deleteIdentifier).mockResolvedValue()
+    const wrapper = await view()
+    await button(wrapper, 'Delete identifier')?.trigger('click')
+    await button(wrapper, 'Confirm delete identifier')?.trigger('click')
+    await flushPromises()
+
+    expect(api.deleteIdentifier).toHaveBeenCalledTimes(1)
+    expect(api.deleteIdentifier).toHaveBeenCalledWith(1, 3, 4)
+    expect(wrapper.text()).not.toContain('EAN: 1234567890123')
+    expect(wrapper.text()).toContain("Director's Cut")
+    expect(wrapper.text()).toContain('Alien')
+  })
+
+  it('keeps an identifier visible and reports a safe error when deletion fails', async () => {
+    vi.mocked(api.deleteIdentifier).mockRejectedValue(new ApiError(404))
+    const wrapper = await view()
+    await button(wrapper, 'Delete identifier')?.trigger('click')
+    await button(wrapper, 'Confirm delete identifier')?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('EAN: 1234567890123')
+    expect(button(wrapper, 'Confirm delete identifier')).toBeDefined()
+    expect(wrapper.get('[role="alert"]').text()).toBe('This identifier is no longer available.')
   })
 })
