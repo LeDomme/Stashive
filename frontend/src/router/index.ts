@@ -11,6 +11,7 @@ import InventoryView from '@/views/InventoryView.vue'
 import InventoryTitlePlaceholderView from '@/views/InventoryTitlePlaceholderView.vue'
 import InventoryTitleManagementView from '@/views/InventoryTitleManagementView.vue'
 import InventoryEditionManagementView from '@/views/InventoryEditionManagementView.vue'
+import InventoryCopyManagementView from '@/views/InventoryCopyManagementView.vue'
 import SetupView from '@/views/SetupView.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -35,6 +36,7 @@ const router = createRouter({
     { path: '/collections/:collectionId/inventory/:catalogEntryId/edit', name: 'inventory-title-edit', component: InventoryTitleManagementView },
     { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/new', name: 'inventory-edition-new', component: InventoryEditionManagementView },
     { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/:editionId/edit', name: 'inventory-edition-edit', component: InventoryEditionManagementView },
+    { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/:editionId/copies/:inventoryItemId/edit', name: 'inventory-copy-edit', component: InventoryCopyManagementView },
     { path: '/collections/:collectionId/inventory/:catalogEntryId', name: 'inventory-title', component: InventoryTitlePlaceholderView },
     { path: '/collections/:collectionId/settings', name: 'collection-settings', component: CollectionSettingsView },
     { path: '/admin/users', name: 'admin-users', component: AdminUsersView, meta: { requiresInstanceAdmin: true } },

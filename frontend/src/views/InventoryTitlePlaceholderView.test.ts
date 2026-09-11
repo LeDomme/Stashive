@@ -14,6 +14,7 @@ const router = createRouter({ history: createMemoryHistory(), routes: [
   { path: '/collections/:collectionId/inventory/:catalogEntryId/edit', name: 'inventory-title-edit', component: InventoryTitlePlaceholderView },
   { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/new', name: 'inventory-edition-new', component: InventoryTitlePlaceholderView },
   { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/:editionId/edit', name: 'inventory-edition-edit', component: InventoryTitlePlaceholderView },
+  { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/:editionId/copies/:inventoryItemId/edit', name: 'inventory-copy-edit', component: InventoryTitlePlaceholderView },
 ] })
 const locations = [{ id: 1, collection_id: 2, parent_id: null, name: 'House', type: 'room' as const, description: null, children: [{ id: 2, collection_id: 2, parent_id: 1, name: 'Basement', type: 'room' as const, description: null, children: [{ id: 3, collection_id: 2, parent_id: 2, name: 'Box', type: 'box' as const, description: null, children: [] }] }] }]
 const detail = {
@@ -92,9 +93,11 @@ describe('InventoryTitlePlaceholderView', () => {
     expect(editor.text()).toContain('Edit title')
     expect(editor.text()).toContain('Add edition')
     expect(editor.text()).toContain('Edit edition')
+    expect(editor.text()).toContain('Edit copy')
     const viewer = await view()
     expect(viewer.text()).not.toContain('Edit title')
     expect(viewer.text()).not.toContain('Add edition')
     expect(viewer.text()).not.toContain('Edit edition')
+    expect(viewer.text()).not.toContain('Edit copy')
   })
 })

@@ -99,6 +99,7 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
                   <div v-if="copy.condition"><dt>Condition</dt><dd>{{ copy.condition }}</dd></div>
                   <div v-if="copy.notes"><dt>Notes</dt><dd>{{ copy.notes }}</dd></div>
                 </dl>
+                <RouterLink v-if="canEdit" class="button-secondary button-compact button-link copy-read-card__action" :to="{ name: 'inventory-copy-edit', params: { collectionId, catalogEntryId: entryId, editionId: edition.id, inventoryItemId: copy.id } }">Edit copy</RouterLink>
               </li>
             </ol>
           </section>
