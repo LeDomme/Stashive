@@ -18,7 +18,7 @@ const customMode = '__custom__'
 function sync(value: string | null) { if (value === null || value === '') { mode.value = ''; return }; if (props.presets.includes(value)) { mode.value = value; return }; mode.value = customMode; custom.value = value }
 watch(() => props.modelValue, sync, { immediate: true })
 const customId = computed(() => `${props.id}-custom`)
-function select(value: string) { mode.value = value; if (value === customMode) emit('update:modelValue', custom.value || props.emptyValue); else emit('update:modelValue', value || props.emptyValue) }
+function select(value: string) { mode.value = value; if (value !== customMode) emit('update:modelValue', value || props.emptyValue) }
 function updateCustom(value: string) { custom.value = value; emit('update:modelValue', value || props.emptyValue) }
 </script>
 <template>
