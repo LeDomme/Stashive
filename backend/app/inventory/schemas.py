@@ -135,7 +135,14 @@ class AddItemCopyInput(BaseModel):
 class AddItemInput(BaseModel):
     title: AddItemTitleChoice
     edition: AddItemEditionChoice
-    copy_data: AddItemCopyInput = Field(validation_alias="copy", serialization_alias="copy")
+    copy_data: AddItemCopyInput
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_copy_transport_field(cls, value: object) -> object:
+        if isinstance(value, dict) and "copy" in value:
+            return {**value, "copy_data": value["copy"]}
+        return value
 
 
 class AddItemResponse(BaseModel):
