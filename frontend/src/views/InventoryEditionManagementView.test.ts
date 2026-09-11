@@ -17,9 +17,9 @@ const router = createRouter({ history: createMemoryHistory(), routes: [
 ] })
 const edition = { id: 4, catalog_entry_id: 3, display_name: 'Special Edition', media_format: 'Blu-ray', release_date: '2003-01-01', publisher: 'Fox', region: 'B', language: 'English', identifiers: [{ id: 5, edition_id: 4, type: 'EAN', value: '123', source: 'manual' }], copies: [] }
 const detail = { catalog_entry: { id: 3, collection_id: 2, display_title: 'Alien', type: 'movie', sort_title: null, notes: null }, editions: [edition] }
-async function view(path = '/collections/2/inventory/3/editions/4/edit', role: 'editor' | 'viewer' = 'editor') {
+async function view(path = '/collections/2/inventory/3/editions/4/edit', role: 'editor' | 'viewer' = 'editor', response = detail) {
   vi.mocked(collectionsApi.getCollection).mockResolvedValue({ id: 2, name: 'Films', type: 'movies', description: null, role, owner: { id: 1, username: 'owner', display_name: null } })
-  vi.mocked(libraryApi.getLibraryTitle).mockResolvedValue(detail)
+  vi.mocked(libraryApi.getLibraryTitle).mockResolvedValue(response)
   vi.mocked(libraryApi.listLibrary).mockResolvedValue([])
   await router.push(path)
   const wrapper = mount(InventoryEditionManagementView, { global: { plugins: [createPinia(), router] } })
@@ -34,8 +34,10 @@ describe('InventoryEditionManagementView', () => {
     vi.mocked(catalogApi.updateEdition).mockResolvedValue({ ...edition, publisher: null, region: null, language: null, media_format: null, release_date: null })
     const wrapper = await view()
     expect(wrapper.get('input').element.value).toBe('Special Edition')
+    const selects = wrapper.findAll('select')
+    await selects[1].setValue('')
     const inputs = wrapper.findAll('input')
-    await inputs[1].setValue(''); await inputs[2].setValue(''); await inputs[3].setValue(''); await inputs[4].setValue(''); await inputs[5].setValue('')
+    await inputs[1].setValue(''); await inputs[2].setValue(''); await inputs[3].setValue(''); await inputs[4].setValue('')
     await wrapper.get('form').trigger('submit'); await flushPromises()
     expect(catalogApi.updateEdition).toHaveBeenCalledWith(2, 4, { display_name: 'Special Edition', media_format: null, release_date: null, publisher: null, region: null, language: null })
     expect(router.currentRoute.value.name).toBe('inventory-title')
@@ -43,11 +45,41 @@ describe('InventoryEditionManagementView', () => {
   it('creates an edition from its dedicated route and supports cancel', async () => {
     vi.mocked(catalogApi.createEdition).mockResolvedValue({ ...edition, id: 9 })
     const wrapper = await view('/collections/2/inventory/3/editions/new')
+    await wrapper.findAll('select')[0].setValue('__custom__')
     await wrapper.get('input').setValue('New edition')
-    await wrapper.findAll('input')[1].setValue('DVD')
+    await wrapper.findAll('select')[1].setValue('DVD')
     await wrapper.get('form').trigger('submit'); await flushPromises()
     expect(catalogApi.createEdition).toHaveBeenCalledWith(2, 3, expect.objectContaining({ display_name: 'New edition', media_format: 'DVD' }))
     expect(router.currentRoute.value.name).toBe('inventory-title')
+  })
+  it('shows known preset values without custom inputs and preserves them on save', async () => {
+    vi.mocked(catalogApi.updateEdition).mockResolvedValue({ ...edition, display_name: 'Steelbook' })
+    const wrapper = await view(undefined, 'editor', { ...detail, editions: [{ ...edition, display_name: 'Steelbook' }] })
+    expect((wrapper.get('#edition-name').element as HTMLSelectElement).value).toBe('Steelbook')
+    expect((wrapper.get('#edition-format').element as HTMLSelectElement).value).toBe('Blu-ray')
+    expect(wrapper.find('#edition-name-custom').exists()).toBe(false)
+    expect(wrapper.find('#edition-format-custom').exists()).toBe(false)
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(catalogApi.updateEdition).toHaveBeenCalledWith(2, 4, expect.objectContaining({ display_name: 'Steelbook', media_format: 'Blu-ray' }))
+  })
+  it('shows and preserves unknown custom edition values', async () => {
+    const custom = { ...edition, display_name: '40th Anniversary Edition', media_format: 'Video CD' }
+    vi.mocked(catalogApi.updateEdition).mockResolvedValue(custom)
+    const wrapper = await view(undefined, 'editor', { ...detail, editions: [custom] })
+    expect((wrapper.get('#edition-name').element as HTMLSelectElement).value).toBe('__custom__')
+    expect((wrapper.get('#edition-name-custom').element as HTMLInputElement).value).toBe('40th Anniversary Edition')
+    expect((wrapper.get('#edition-format').element as HTMLSelectElement).value).toBe('__custom__')
+    expect((wrapper.get('#edition-format-custom').element as HTMLInputElement).value).toBe('Video CD')
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(catalogApi.updateEdition).toHaveBeenCalledWith(2, 4, expect.objectContaining({ display_name: '40th Anniversary Edition', media_format: 'Video CD' }))
+  })
+  it('keeps null preset fields empty without a custom input', async () => {
+    const empty = { ...edition, display_name: '', media_format: null }
+    const wrapper = await view(undefined, 'editor', { ...detail, editions: [empty] })
+    expect((wrapper.get('#edition-name').element as HTMLSelectElement).value).toBe('')
+    expect((wrapper.get('#edition-format').element as HTMLSelectElement).value).toBe('')
+    expect(wrapper.find('#edition-name-custom').exists()).toBe(false)
+    expect(wrapper.find('#edition-format-custom').exists()).toBe(false)
   })
   it('manages barcodes and IDs with duplicate feedback and confirmed deletion', async () => {
     const wrapper = await view()

@@ -38,7 +38,7 @@ describe('InventoryCopyManagementView', () => {
     expect(wrapper.text()).toContain('Alien')
     expect(wrapper.text()).toContain('Special Edition · Blu-ray')
     expect(wrapper.get('h1').text()).toBe('Copy 2')
-    expect(wrapper.get('input').element.value).toBe('')
+    expect(wrapper.get('select').element.value).toBe('')
     expect(wrapper.get('textarea').element.value).toBe('')
   })
   it('saves only the selected copy with null semantics and refreshes library state', async () => {
@@ -50,6 +50,23 @@ describe('InventoryCopyManagementView', () => {
     expect(libraryApi.getLibraryTitle).toHaveBeenCalledWith(2, 3)
     expect(libraryApi.listLibrary).toHaveBeenCalledWith(2, {})
     expect(router.currentRoute.value.name).toBe('inventory-title')
+  })
+  it('selects and saves a known condition preset', async () => {
+    vi.mocked(inventoryApi.updateInventoryItem).mockResolvedValue(first)
+    const wrapper = await view('/collections/2/inventory/3/editions/4/copies/6/edit')
+    expect((wrapper.get('#copy-condition').element as HTMLSelectElement).value).toBe('Good')
+    await wrapper.get('#copy-condition').setValue('Very Good')
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith(2, 6, { condition: 'Very Good', notes: 'First copy' })
+  })
+  it('shows and preserves an unknown custom condition', async () => {
+    const sealed = { ...second, condition: 'Sealed' }
+    vi.mocked(inventoryApi.updateInventoryItem).mockResolvedValue(sealed)
+    const wrapper = await view(undefined, 'editor', { ...detail, editions: [{ ...detail.editions[0], copies: [first, sealed] }, detail.editions[1]] })
+    expect((wrapper.get('#copy-condition').element as HTMLSelectElement).value).toBe('__custom__')
+    expect((wrapper.get('#copy-condition-custom').element as HTMLInputElement).value).toBe('Sealed')
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith(2, 7, { condition: 'Sealed', notes: null })
   })
   it('cancels general editing without mutation', async () => {
     const wrapper = await view()

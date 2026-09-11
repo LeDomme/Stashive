@@ -8,6 +8,8 @@ import { useCollectionsStore } from "@/stores/collections";
 import { useInventoryStore } from "@/stores/inventory";
 import { useLibraryStore } from "@/stores/library";
 import { useLocationsStore } from "@/stores/locations";
+import PresetCustomField from "@/components/PresetCustomField.vue";
+import { CONDITION_PRESETS } from "@/constants/inventoryPresets";
 
 const route = useRoute();
 const router = useRouter();
@@ -115,7 +117,7 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId, route.param
         <header class="copy-management-context"><p>{{ library.title?.catalog_entry.display_title }}</p><p>{{ edition.display_name }}<span v-if="edition.media_format"> · {{ edition.media_format }}</span></p><h1>Copy {{ copyNumber }}</h1></header>
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
         <form v-if="section === 'general'" class="collection-form" @submit.prevent="saveGeneral">
-          <label>Condition <span class="optional">optional</span><input v-model="form.condition" /></label>
+          <PresetCustomField id="copy-condition" v-model="form.condition" label="Condition" :presets="CONDITION_PRESETS" allow-empty empty-value="" />
           <label>Notes <span class="optional">optional</span><textarea v-model="form.notes" /></label>
           <div class="action-row"><button :disabled="busy">{{ busy ? "Saving…" : "Save copy" }}</button><RouterLink class="button-secondary button-link" :to="detailRoute()">Cancel</RouterLink></div>
         </form>

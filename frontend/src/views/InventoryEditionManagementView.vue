@@ -6,6 +6,8 @@ import type { Identifier } from "@/api/catalog";
 import { useCatalogStore } from "@/stores/catalog";
 import { useCollectionsStore } from "@/stores/collections";
 import { useLibraryStore } from "@/stores/library";
+import PresetCustomField from "@/components/PresetCustomField.vue";
+import { EDITION_PRESETS, MEDIA_FORMAT_PRESETS } from "@/constants/inventoryPresets";
 
 const route = useRoute();
 const router = useRouter();
@@ -107,8 +109,8 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId, route.param
         <p v-if="error" class="form-error" role="alert">{{ error }}</p>
         <form v-if="section === 'general'" class="collection-form" @submit.prevent="save">
           <h1>{{ isNew ? "Add edition" : "Edition general" }}</h1>
-          <label>Edition name<input v-model="form.display_name" required /></label>
-          <label>Media format <span class="optional">optional</span><input v-model="form.media_format" /></label>
+          <PresetCustomField id="edition-name" v-model="form.display_name" label="Edition" :presets="EDITION_PRESETS" allow-empty empty-value="" />
+          <PresetCustomField id="edition-format" v-model="form.media_format" label="Media format" :presets="MEDIA_FORMAT_PRESETS" allow-empty empty-value="" />
           <label>Release date <span class="optional">optional</span><input v-model="form.release_date" type="date" /></label>
           <label>Publisher <span class="optional">optional</span><input v-model="form.publisher" /></label>
           <label>Region <span class="optional">optional</span><input v-model="form.region" /></label>
