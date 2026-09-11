@@ -11,6 +11,9 @@ vi.mock('@/api/collections'); vi.mock('@/api/library'); vi.mock('@/api/locations
 const router = createRouter({ history: createMemoryHistory(), routes: [
   { path: '/collections/:collectionId/inventory', name: 'inventory', component: InventoryTitlePlaceholderView },
   { path: '/collections/:collectionId/inventory/:catalogEntryId', name: 'inventory-title', component: InventoryTitlePlaceholderView },
+  { path: '/collections/:collectionId/inventory/:catalogEntryId/edit', name: 'inventory-title-edit', component: InventoryTitlePlaceholderView },
+  { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/new', name: 'inventory-edition-new', component: InventoryTitlePlaceholderView },
+  { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/:editionId/edit', name: 'inventory-edition-edit', component: InventoryTitlePlaceholderView },
 ] })
 const locations = [{ id: 1, collection_id: 2, parent_id: null, name: 'House', type: 'room' as const, description: null, children: [{ id: 2, collection_id: 2, parent_id: 1, name: 'Basement', type: 'room' as const, description: null, children: [{ id: 3, collection_id: 2, parent_id: 2, name: 'Box', type: 'box' as const, description: null, children: [] }] }] }]
 const detail = {
@@ -23,8 +26,8 @@ const detail = {
     { id: 8, catalog_entry_id: 3, display_name: 'Director’s Cut', media_format: 'UHD Blu-ray', release_date: null, publisher: null, region: null, language: null, identifiers: [], copies: [] },
   ],
 }
-async function view(response = detail) {
-  vi.mocked(collectionsApi.getCollection).mockResolvedValue({ id: 2, name: 'Films', type: 'movies', description: null, role: 'viewer', owner: { id: 1, username: 'owner', display_name: null } })
+async function view(response = detail, role: 'editor' | 'viewer' = 'viewer') {
+  vi.mocked(collectionsApi.getCollection).mockResolvedValue({ id: 2, name: 'Films', type: 'movies', description: null, role, owner: { id: 1, username: 'owner', display_name: null } })
   vi.mocked(locationsApi.listLocationTree).mockResolvedValue(locations)
   vi.mocked(libraryApi.getLibraryTitle).mockResolvedValue(response)
   await router.push('/collections/2/inventory/3')
@@ -83,5 +86,15 @@ describe('InventoryTitlePlaceholderView', () => {
     await flushPromises()
     expect(router.currentRoute.value.name).toBe('inventory')
     expect(router.currentRoute.value.params.collectionId).toBe('2')
+  })
+  it('shows title and edition management entry points only to content editors', async () => {
+    const editor = await view(detail, 'editor')
+    expect(editor.text()).toContain('Edit title')
+    expect(editor.text()).toContain('Add edition')
+    expect(editor.text()).toContain('Edit edition')
+    const viewer = await view()
+    expect(viewer.text()).not.toContain('Edit title')
+    expect(viewer.text()).not.toContain('Add edition')
+    expect(viewer.text()).not.toContain('Edit edition')
   })
 })

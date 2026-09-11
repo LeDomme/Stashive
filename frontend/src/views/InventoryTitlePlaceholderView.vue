@@ -14,6 +14,9 @@ const library = useLibraryStore();
 const locations = useLocationsStore();
 const collectionId = computed(() => Number(route.params.collectionId));
 const entryId = computed(() => Number(route.params.catalogEntryId));
+const canEdit = computed(() =>
+  ["owner", "admin", "editor"].includes(collections.collection?.role ?? ""),
+);
 
 function flatten(nodes: LocationTreeNode[], prefix = ""): { id: number; path: string }[] {
   return nodes.flatMap((node) => {
@@ -60,6 +63,10 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
           <p v-if="library.title.catalog_entry.sort_title" class="inventory-title-detail__sort-title">Sort title: {{ library.title.catalog_entry.sort_title }}</p>
           <p class="inventory-title-detail__type">{{ titleType(library.title.catalog_entry.type) }}</p>
           <p v-if="library.title.catalog_entry.notes" class="inventory-title-detail__notes">{{ library.title.catalog_entry.notes }}</p>
+          <div v-if="canEdit" class="action-row inventory-title-detail__actions">
+            <RouterLink class="button-secondary button-link" :to="{ name: 'inventory-title-edit', params: { collectionId, catalogEntryId: entryId } }">Edit title</RouterLink>
+            <RouterLink class="button-secondary button-link" :to="{ name: 'inventory-edition-new', params: { collectionId, catalogEntryId: entryId } }">Add edition</RouterLink>
+          </div>
         </div>
       </header>
 
@@ -68,6 +75,7 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
           <header class="edition-detail-card__header">
             <h2>{{ edition.display_name || "Standard Edition" }}</h2>
             <span v-if="edition.media_format" class="edition-format-badge">{{ edition.media_format }}</span>
+            <RouterLink v-if="canEdit" class="button-secondary button-compact button-link" :to="{ name: 'inventory-edition-edit', params: { collectionId, catalogEntryId: entryId, editionId: edition.id } }">Edit edition</RouterLink>
           </header>
           <div v-if="edition.release_date || edition.region || edition.language || edition.publisher" class="edition-detail-card__metadata">
             <p v-if="edition.release_date || edition.region || edition.language">{{ [edition.release_date, edition.region && `Region ${edition.region}`, edition.language].filter(Boolean).join(" · ") }}</p>
