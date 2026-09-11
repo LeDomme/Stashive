@@ -320,9 +320,9 @@ def add_item(
             new_title=payload.title.new.model_dump() if payload.title.new else None,
             edition_id=payload.edition.existing_id,
             new_edition=payload.edition.new.model_dump() if payload.edition.new else None,
-            condition=payload.copy_.condition,
-            notes=payload.copy_.notes,
-            location_id=payload.copy_.location_id,
+            condition=payload.copy_data.condition,
+            notes=payload.copy_data.notes,
+            location_id=payload.copy_data.location_id,
         )
     except (
         CatalogEntryNotFoundError,

@@ -135,7 +135,7 @@ class AddItemCopyInput(BaseModel):
 class AddItemInput(BaseModel):
     title: AddItemTitleChoice
     edition: AddItemEditionChoice
-    copy_: AddItemCopyInput = Field(validation_alias="copy", serialization_alias="copy")
+    copy_data: AddItemCopyInput = Field(validation_alias="copy", serialization_alias="copy")
 
 
 class AddItemResponse(BaseModel):
