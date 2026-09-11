@@ -102,6 +102,24 @@ def add_edition(database: Database, entry_id: int, name: str = "Blu-ray") -> int
         return edition.id
 
 
+def add_item_payload(
+    title: dict[str, object], edition: dict[str, object], location_id: int | None = None
+) -> dict[str, object]:
+    return {
+        "title": title,
+        "edition": edition,
+        "copy": {"condition": None, "notes": None, "location_id": location_id},
+    }
+
+
+def inventory_counts(database: Database) -> tuple[int, int, int]:
+    with database.session_factory() as session:
+        return tuple(
+            session.scalar(select(func.count()).select_from(model))
+            for model in (CatalogEntry, Edition, InventoryItem)
+        )  # type: ignore[return-value]
+
+
 @pytest.mark.anyio
 async def test_title_search_and_transactional_add_item_cases(
     database: Database, inventory_context: dict[str, int | dict[str, User]]
@@ -162,6 +180,136 @@ async def test_title_search_and_transactional_add_item_cases(
         assert session.scalar(select(func.count()).select_from(CatalogEntry)) == 2
         assert session.scalar(select(func.count()).select_from(Edition)) == 3
         assert session.scalar(select(func.count()).select_from(InventoryItem)) == 3
+
+
+@pytest.mark.anyio
+async def test_add_item_rejects_invalid_and_foreign_relationships_without_writes(
+    database: Database, inventory_context: dict[str, int | dict[str, User]]
+) -> None:
+    collection_id = inventory_context["collection_id"]
+    other_id = inventory_context["other_collection_id"]
+    users = inventory_context["users"]
+    assert isinstance(collection_id, int) and isinstance(other_id, int) and isinstance(users, dict)
+    alien = add_entry(database, collection_id, "Alien")
+    alien_edition = add_edition(database, alien)
+    predator = add_entry(database, collection_id, "Predator")
+    predator_edition = add_edition(database, predator)
+    foreign_title = add_entry(database, other_id, "Private")
+    foreign_edition = add_edition(database, foreign_title)
+    with database.session_factory() as session:
+        foreign_location = Location(collection_id=other_id, name="Private shelf", type="shelf")
+        session.add(foreign_location)
+        session.commit()
+        foreign_location_id = foreign_location.id
+    app.state.database = database
+    invalid = [
+        add_item_payload(
+            {"existing_id": alien, "new": {"display_title": "New", "type": "movie"}},
+            {"existing_id": alien_edition, "new": None},
+        ),
+        add_item_payload(
+            {"existing_id": None, "new": None}, {"existing_id": alien_edition, "new": None}
+        ),
+        add_item_payload(
+            {"existing_id": alien, "new": None},
+            {"existing_id": alien_edition, "new": {"display_name": "New"}},
+        ),
+        add_item_payload({"existing_id": alien, "new": None}, {"existing_id": None, "new": None}),
+        add_item_payload(
+            {"existing_id": None, "new": {"display_title": "New", "type": "movie"}},
+            {"existing_id": alien_edition, "new": None},
+        ),
+        add_item_payload(
+            {"existing_id": alien, "new": None}, {"existing_id": predator_edition, "new": None}
+        ),
+        add_item_payload(
+            {"existing_id": foreign_title, "new": None},
+            {"existing_id": foreign_edition, "new": None},
+        ),
+        add_item_payload(
+            {"existing_id": alien, "new": None}, {"existing_id": foreign_edition, "new": None}
+        ),
+        add_item_payload(
+            {"existing_id": None, "new": {"display_title": "Rollback", "type": "movie"}},
+            {"existing_id": None, "new": {"display_name": "New"}},
+            foreign_location_id,
+        ),
+        add_item_payload(
+            {"existing_id": alien, "new": None},
+            {"existing_id": None, "new": {"display_name": "Rollback"}},
+            foreign_location_id,
+        ),
+        add_item_payload(
+            {"existing_id": alien, "new": None},
+            {"existing_id": alien_edition, "new": None},
+            foreign_location_id,
+        ),
+    ]
+    before = inventory_counts(database)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = authenticate(client, database, users["owner"])
+        responses = [
+            await client.post(
+                f"/api/collections/{collection_id}/items", json=payload, headers=headers
+            )
+            for payload in invalid
+        ]
+    assert all(response.status_code in {404, 422} for response in responses)
+    assert inventory_counts(database) == before
+
+
+@pytest.mark.anyio
+async def test_add_item_acl_search_contract_and_collection_scope(
+    database: Database, inventory_context: dict[str, int | dict[str, User]]
+) -> None:
+    collection_id = inventory_context["collection_id"]
+    other_id = inventory_context["other_collection_id"]
+    users = inventory_context["users"]
+    assert isinstance(collection_id, int) and isinstance(other_id, int) and isinstance(users, dict)
+    alien = add_entry(database, collection_id, "Alien")
+    edition = add_edition(database, alien)
+    add_entry(database, collection_id, "The Thing")
+    foreign_alien = add_entry(database, other_id, "Alien")
+    for index in range(25):
+        add_entry(database, collection_id, f"Alien {index}")
+    app.state.database = database
+    payload = add_item_payload(
+        {"existing_id": alien, "new": None}, {"existing_id": edition, "new": None}
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        mutation = {
+            actor: await client.post(
+                f"/api/collections/{collection_id}/items",
+                json=payload,
+                headers=authenticate(client, database, users[actor]),
+            )
+            for actor in ("owner", "admin", "editor", "viewer", "outsider", "instance")
+        }
+        search = {
+            actor: await client.get(
+                f"/api/collections/{collection_id}/library/title-search?q=ALI",
+                headers=authenticate(client, database, users[actor]),
+            )
+            for actor in ("owner", "admin", "editor", "viewer", "outsider", "instance")
+        }
+        short = await client.get(
+            f"/api/collections/{collection_id}/library/title-search?q=a",
+            headers=authenticate(client, database, users["owner"]),
+        )
+        sort = await client.get(
+            f"/api/collections/{collection_id}/library/title-search?q=thing",
+            headers=authenticate(client, database, users["owner"]),
+        )
+    assert all(mutation[actor].status_code == 201 for actor in ("owner", "admin", "editor"))
+    assert (
+        mutation["viewer"].status_code == 403
+        and mutation["outsider"].status_code == mutation["instance"].status_code == 404
+    )
+    assert all(search[actor].status_code == 200 for actor in ("owner", "admin", "editor", "viewer"))
+    assert search["outsider"].status_code == search["instance"].status_code == 404
+    assert short.status_code == 422 and sort.status_code == 200
+    assert len(search["owner"].json()) == 20
+    assert all(item["catalog_entry_id"] != foreign_alien for item in search["owner"].json())
 
 
 @pytest.mark.anyio
