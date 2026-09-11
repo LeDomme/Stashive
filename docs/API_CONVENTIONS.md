@@ -48,9 +48,33 @@ POST   /api/collections/{collection_id}/inventory-items
 GET    /api/collections/{collection_id}/inventory-items/{item_id}
 PATCH  /api/collections/{collection_id}/inventory-items/{item_id}
 DELETE /api/collections/{collection_id}/inventory-items/{item_id}
+
+GET    /api/collections/{collection_id}/library
+GET    /api/collections/{collection_id}/library/{catalog_entry_id}
+GET    /api/collections/{collection_id}/library/title-search?q=al
+POST   /api/collections/{collection_id}/items
 ```
 
 Final endpoint design may evolve with implementation.
+
+Library endpoints are collection-scoped VIEW read models over the existing
+CatalogEntry → Edition → InventoryItem hierarchy; they introduce no persisted
+library/grouping table. The list returns one summary per title and the detail
+embeds editions, identifiers, and physical copies.
+
+`POST /items` is the transactional user-oriented Add item use case. It explicitly
+chooses either an existing or new title and edition, then always creates one new
+physical copy; it does not change the CatalogEntry → Edition → InventoryItem model.
+It supports exactly these choices: new title + new edition + copy, existing title + new edition +
+copy, and existing title + existing edition + copy. Validation or persistence failures roll the
+whole operation back; no partial title, edition, or copy is retained.
+
+The normal UI derives a new `CatalogEntry.type` from `Collection.type`; it does not ask users to
+choose an internal catalog-entry type. Title search may suggest existing titles, but neither exact
+matches nor fuzzy matches are selected or merged automatically.
+
+`Edition.media_format` is nullable free-form text on an edition, rather than a catalog-entry field
+or backend enum. The UI offers presets for common values, but API clients may send custom strings.
 
 Location GET returns the complete nested tree for a collection. Roots and children are ordered
 case-insensitively by name, then by ID. Create accepts `name`, `type`, optional `description`,
@@ -80,6 +104,11 @@ Inventory filtering uses `location_id`: it includes that location and descendant
 default. Set `include_descendants=false` for an exact location. `unassigned=true`
 returns items without a location; it cannot be combined with `location_id`, and
 `include_descendants` requires `location_id`.
+
+Library summaries accept the same copy filters. With a filter, a title is returned
+only when it has a matching physical copy; its edition and copy counts cover only
+the matching copies and their editions. Without a filter, titles without copies are
+also returned.
 
 ## Errors
 

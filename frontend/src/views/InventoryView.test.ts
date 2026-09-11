@@ -2,37 +2,100 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ApiError } from '@/api/client'
 import * as catalogApi from '@/api/catalog'
 import * as collectionsApi from '@/api/collections'
-import * as inventoryApi from '@/api/inventory'
+import * as libraryApi from '@/api/library'
 import * as locationsApi from '@/api/locations'
 import InventoryView from './InventoryView.vue'
-vi.mock('@/api/catalog');vi.mock('@/api/collections');vi.mock('@/api/inventory');vi.mock('@/api/locations')
-const router=createRouter({history:createMemoryHistory(),routes:[{path:'/collections/:collectionId',name:'collection-detail',component:InventoryView},{path:'/collections/:collectionId/inventory',name:'inventory',component:InventoryView},{path:'/collections/:collectionId/catalog',name:'catalog',component:InventoryView},{path:'/collections/:collectionId/locations',name:'locations',component:InventoryView},{path:'/collections/:collectionId/settings',name:'collection-settings',component:InventoryView}]})
-const entry={id:2,collection_id:1,display_title:'Blade Runner',type:'movie',sort_title:null,notes:null};const edition={id:3,catalog_entry_id:2,display_name:'UHD Blu-ray',release_date:null,publisher:null,region:null,language:null};const first={id:4,edition_id:3,condition:'Good',notes:'Shelf copy',location_id:null,created_at:'2026-01-01T00:00:00',updated_at:'2026-01-01T00:00:00'};const second={...first,id:5,condition:null,notes:null,location_id:9}
-const tree=[{id:7,collection_id:1,parent_id:null,name:'House',type:'room' as const,description:null,children:[{id:8,collection_id:1,parent_id:7,name:'Basement',type:'room' as const,description:null,children:[{id:9,collection_id:1,parent_id:8,name:'Box',type:'box' as const,description:null,children:[]}]}]}]
-async function view(role:'owner'|'admin'|'editor'|'viewer'='owner',items=[first,second]){vi.mocked(collectionsApi.getCollection).mockResolvedValue({id:1,name:'Films',type:'movies',description:null,role,owner:{id:1,username:'owner',display_name:null}});vi.mocked(inventoryApi.listInventory).mockResolvedValue(items);vi.mocked(catalogApi.listCatalog).mockResolvedValue([entry]);vi.mocked(catalogApi.listEditions).mockResolvedValue([edition]);vi.mocked(locationsApi.listLocationTree).mockResolvedValue(tree);await router.push('/collections/1/inventory');const wrapper=mount(InventoryView,{global:{plugins:[createPinia(),router]}});await flushPromises();return wrapper}
-function button(wrapper:VueWrapper,name:string){return wrapper.findAll('button').find(candidate=>candidate.text()===name||candidate.attributes('aria-label')===name)}
-function input(wrapper:VueWrapper,label:string){const field=wrapper.findAll('label').find(candidate=>candidate.text().startsWith(label));if(!field)throw new Error(label);return field.get('input, textarea, select')}
-function form(wrapper:VueWrapper,text:string){const found=wrapper.findAll('form').find(candidate=>candidate.text().includes(text));if(!found)throw new Error(text);return found}
-afterEach(()=>vi.clearAllMocks())
-describe('InventoryView',()=>{
- it('renders ordered copies with title, edition, metadata and location state',async()=>{const w=await view();expect(w.text()).toContain('Blade Runner');expect(w.text()).toContain('UHD Blu-ray');expect(w.text()).toContain('Good');expect(w.text()).toContain('Shelf copy');expect(w.text()).toContain('Unassigned');expect(w.text()).toContain('House > Basement > Box');expect(w.findAll('.inventory-list > li').map(item=>item.text())).toHaveLength(2)})
- it('shows a singular or plural result count in the filter toolbar',async()=>{expect((await view('viewer',[first])).get('.filter-toolbar__summary').text()).toBe('1 physical copy');expect((await view('viewer')).get('.filter-toolbar__summary').text()).toBe('2 physical copies')})
- it('shows role-aware empty state',async()=>{expect((await view('owner',[])).text()).toContain('Add physical copy');expect((await view('viewer',[])).text()).not.toContain('Add physical copy')})
- it.each(['owner','admin','editor'] as const)('%s can create, edit and delete copies',async role=>{const w=await view(role);expect(button(w,'Add physical copy')).toBeDefined();expect(button(w,'Edit copy')).toBeDefined();expect(button(w,'Delete copy')).toBeDefined()})
- it('keeps viewers read-only',async()=>{const w=await view('viewer');expect(button(w,'Add physical copy')).toBeUndefined();expect(button(w,'Edit copy')).toBeUndefined();expect(button(w,'Delete copy')).toBeUndefined()})
- it('creates unassigned copies of the same edition',async()=>{vi.mocked(inventoryApi.createInventoryItem).mockResolvedValue({...first,id:6,condition:null,notes:null});const w=await view();await button(w,'Add physical copy')?.trigger('click');expect(w.text()).toContain('Blade Runner — UHD Blu-ray');await input(w,'Edition').setValue('3');await form(w,'Create physical copy').trigger('submit');await flushPromises();expect(inventoryApi.createInventoryItem).toHaveBeenCalledWith(1,{edition_id:3,condition:null,notes:null});expect(w.findAll('.inventory-list > li')).toHaveLength(3)})
- it('creates copies with optional condition and notes',async()=>{vi.mocked(inventoryApi.createInventoryItem).mockResolvedValue({...first,id:6});const w=await view();await button(w,'Add physical copy')?.trigger('click');await input(w,'Edition').setValue('3');await input(w,'Condition').setValue('Excellent');await input(w,'Notes').setValue('Second copy');await form(w,'Create physical copy').trigger('submit');await flushPromises();expect(inventoryApi.createInventoryItem).toHaveBeenCalledWith(1,{edition_id:3,condition:'Excellent',notes:'Second copy'})})
- it('edits a copy with explicit null semantics',async()=>{vi.mocked(inventoryApi.updateInventoryItem).mockResolvedValue({...first,condition:null,notes:null});const w=await view();await button(w,'Edit copy')?.trigger('click');expect(input(w,'Condition').element.value).toBe('Good');await input(w,'Condition').setValue('');await input(w,'Notes').setValue('');await form(w,'Save copy').trigger('submit');await flushPromises();expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith(1,4,{condition:null,notes:null})})
- it('keeps a copy visible after update failure',async()=>{vi.mocked(inventoryApi.updateInventoryItem).mockRejectedValue(new ApiError(403));const w=await view();await button(w,'Edit copy')?.trigger('click');await form(w,'Save copy').trigger('submit');await flushPromises();expect(w.text()).toContain('Shelf copy');expect(w.get('[role="alert"]').text()).toContain('permission')})
- it('requires confirmation and deletes only the selected copy',async()=>{vi.mocked(inventoryApi.deleteInventoryItem).mockResolvedValue();const w=await view();await button(w,'Delete copy')?.trigger('click');expect(inventoryApi.deleteInventoryItem).not.toHaveBeenCalled();expect(w.text()).toContain('Delete this physical copy?');await button(w,'Confirm delete copy')?.trigger('click');await flushPromises();expect(inventoryApi.deleteInventoryItem).toHaveBeenCalledWith(1,4);expect(w.text()).toContain('House > Basement > Box');expect(w.text()).not.toContain('Shelf copy')})
- it('keeps a copy visible after delete failure',async()=>{vi.mocked(inventoryApi.deleteInventoryItem).mockRejectedValue(new ApiError(404));const w=await view();await button(w,'Delete copy')?.trigger('click');await button(w,'Confirm delete copy')?.trigger('click');await flushPromises();expect(w.text()).toContain('Shelf copy');expect(w.get('[role="alert"]').text()).toContain('no longer available')})
- it('renders nested location paths and lets editors assign a location',async()=>{vi.mocked(inventoryApi.updateInventoryItem).mockResolvedValue({...first,location_id:9});const w=await view('editor');expect(w.text()).toContain('House > Basement > Box');await button(w,'Assign location')?.trigger('click');await input(w,'Location').setValue('9');await form(w,'Save location').trigger('submit');await flushPromises();expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith(1,4,{location_id:9});expect(w.text()).toContain('House > Basement > Box')})
- it('moves and unassigns without optimistic state on error',async()=>{vi.mocked(inventoryApi.updateInventoryItem).mockResolvedValueOnce({...second,location_id:7}).mockResolvedValueOnce({...second,location_id:null});const w=await view();await button(w,'Change location')?.trigger('click');await input(w,'Location').setValue('7');await form(w,'Save location').trigger('submit');await flushPromises();expect(inventoryApi.updateInventoryItem).toHaveBeenLastCalledWith(1,5,{location_id:7});await button(w,'Remove location')?.trigger('click');await form(w,'Save location').trigger('submit');await flushPromises();expect(inventoryApi.updateInventoryItem).toHaveBeenLastCalledWith(1,5,{location_id:null});expect(w.text()).toContain('Unassigned')})
- it('passes all, unassigned, recursive and exact filters without stale parameters',async()=>{const w=await view('viewer');await form(w,'Apply filter').trigger('submit');await flushPromises();expect(inventoryApi.listInventory).toHaveBeenLastCalledWith(1,{});await input(w,'Filter').setValue('unassigned');await form(w,'Apply filter').trigger('submit');await flushPromises();expect(inventoryApi.listInventory).toHaveBeenLastCalledWith(1,{unassigned:true});await input(w,'Filter').setValue('location');await input(w,'Location').setValue('7');await form(w,'Apply filter').trigger('submit');await flushPromises();expect(inventoryApi.listInventory).toHaveBeenLastCalledWith(1,{locationId:7,includeDescendants:true});const checkbox=w.get('input[type="checkbox"]');await checkbox.setValue(false);await form(w,'Apply filter').trigger('submit');await flushPromises();expect(inventoryApi.listInventory).toHaveBeenLastCalledWith(1,{locationId:7,includeDescendants:false});expect(button(w,'Assign location')).toBeUndefined()})
- it('clears inventory filters and reloads the unfiltered list',async()=>{const w=await view('viewer');await input(w,'Filter').setValue('location');await input(w,'Location').setValue('7');await w.get('input[type="checkbox"]').setValue(false);await button(w,'Clear')?.trigger('click');await flushPromises();expect(input(w,'Filter').element.value).toBe('all');expect(inventoryApi.listInventory).toHaveBeenLastCalledWith(1,{})})
- it('keeps the location controls accessible as one toolbar state',async()=>{const w=await view('viewer');await input(w,'Filter').setValue('location');const locationSelect=w.get('select[aria-label="Location"]');expect(locationSelect.exists()).toBe(true);const checkbox=w.get('input[type="checkbox"]');expect(checkbox.attributes('type')).toBe('checkbox');expect(checkbox.find('input').exists()).toBe(false);expect(w.get('.toolbar-checkbox').text()).toContain('Include sublocations');expect(w.get('.filter-toolbar__actions').text()).toContain('Apply filter')})
- it('cancels copy editing without mutation or location changes',async()=>{const w=await view();await button(w,'Edit copy')?.trigger('click');await input(w,'Condition').setValue('Changed');await button(w,'Cancel')?.trigger('click');expect(inventoryApi.updateInventoryItem).not.toHaveBeenCalled();expect(w.text()).toContain('Good');expect(w.text()).toContain('House > Basement > Box')})
+
+vi.mock('@/api/catalog'); vi.mock('@/api/collections'); vi.mock('@/api/library'); vi.mock('@/api/locations')
+const router = createRouter({ history: createMemoryHistory(), routes: [
+  { path: '/collections/:collectionId/inventory', name: 'inventory', component: InventoryView },
+  { path: '/collections/:collectionId/inventory/add', name: 'inventory-add', component: InventoryView },
+  { path: '/collections/:collectionId/inventory/:catalogEntryId', name: 'inventory-title', component: InventoryView },
+  { path: '/collections/:collectionId/catalog', name: 'catalog', component: InventoryView },
+  { path: '/collections/:collectionId/locations', name: 'locations', component: InventoryView },
+  { path: '/collections/:collectionId/settings', name: 'collection-settings', component: InventoryView },
+] })
+const entry = { id: 2, collection_id: 1, display_title: 'Blade Runner', type: 'movie', sort_title: null, notes: null }
+const edition = { id: 3, catalog_entry_id: 2, display_name: 'UHD Blu-ray', media_format: 'UHD Blu-ray', release_date: null, publisher: null, region: null, language: null }
+const titles = [
+  { id: 2, catalog_entry_id: 2, display_title: 'Blade Runner', sort_title: null, type: 'movie', edition_count: 2, copy_count: 3, media_formats: ['Blu-ray', 'UHD Blu-ray'] },
+  { id: 5, catalog_entry_id: 5, display_title: 'Heat', sort_title: null, type: 'movie', edition_count: 1, copy_count: 0, media_formats: [] },
+]
+const tree = [{ id: 7, collection_id: 1, parent_id: null, name: 'House', type: 'room' as const, description: null, children: [{ id: 8, collection_id: 1, parent_id: 7, name: 'Shelf', type: 'shelf' as const, description: null, children: [] }] }]
+
+async function view(role: 'owner' | 'admin' | 'editor' | 'viewer' = 'owner', summaries = titles) {
+  vi.mocked(collectionsApi.getCollection).mockResolvedValue({ id: 1, name: 'Films', type: 'movies', description: null, role, owner: { id: 1, username: 'owner', display_name: null } })
+  vi.mocked(libraryApi.listLibrary).mockResolvedValue(summaries)
+  vi.mocked(catalogApi.listCatalog).mockResolvedValue([entry])
+  vi.mocked(catalogApi.listEditions).mockResolvedValue([edition])
+  vi.mocked(locationsApi.listLocationTree).mockResolvedValue(tree)
+  await router.push('/collections/1/inventory')
+  const wrapper = mount(InventoryView, { global: { plugins: [createPinia(), router] } })
+  await flushPromises()
+  return wrapper
+}
+function button(wrapper: VueWrapper, name: string) { return wrapper.findAll('button, a').find((candidate) => candidate.text() === name) }
+function input(wrapper: VueWrapper, label: string) { const field = wrapper.findAll('label').find((candidate) => candidate.text().startsWith(label)); if (!field) throw new Error(label); return field.get('input, textarea, select') }
+function form(wrapper: VueWrapper, text: string) { const found = wrapper.findAll('form').find((candidate) => candidate.text().includes(text)); if (!found) throw new Error(text); return found }
+afterEach(() => vi.clearAllMocks())
+
+describe('InventoryView', () => {
+  it('renders one title card per catalog entry with counts, formats and a cover placeholder', async () => {
+    const wrapper = await view()
+    expect(wrapper.findAll('.library-card')).toHaveLength(2)
+    expect(wrapper.get('.library-card').text()).toContain('2 editions · 3 copies')
+    expect(wrapper.get('.library-card').text()).toContain('Blu-ray · UHD Blu-ray')
+    expect(wrapper.get('.library-card__cover').text()).toBe('Stashive')
+    expect(wrapper.find('.inventory-list').exists()).toBe(false)
+  })
+  it('uses the consistent three-item primary collection subnavigation', async () => {
+    const wrapper = await view()
+    expect(wrapper.get('[aria-label="Collection navigation"]').findAll('a').map((link) => link.text())).toEqual(['Inventory', 'Locations', 'Settings'])
+  })
+  it('renders singular result and card counts', async () => {
+    const wrapper = await view('viewer', [{ ...titles[0], edition_count: 1, copy_count: 1, media_formats: [] }])
+    expect(wrapper.get('.filter-toolbar__summary').text()).toBe('1 title · 1 physical copy')
+    expect(wrapper.get('.library-card__summary').text()).toBe('1 edition · 1 copy')
+  })
+  it('navigates title cards to their collection-scoped detail route', async () => {
+    const wrapper = await view('viewer')
+    await wrapper.get('.library-card__link').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('inventory-title')
+    expect(router.currentRoute.value.params).toMatchObject({ collectionId: '1', catalogEntryId: '2' })
+  })
+  it('shows Add item for every content editor role and never for viewers', async () => {
+    for (const role of ['owner', 'admin', 'editor'] as const) expect(button(await view(role), 'Add item')).toBeDefined()
+    expect(button(await view('viewer'), 'Add item')).toBeUndefined()
+  })
+  it('routes Add item to the guided inventory flow', async () => {
+    const wrapper = await view()
+    await wrapper.find('a.button-link').trigger('click')
+    await flushPromises()
+    expect(router.currentRoute.value.name).toBe('inventory-add')
+  })
+  it('shows role-aware empty states', async () => {
+    expect((await view('owner', [])).text()).toContain('No titles yet')
+    expect(button(await view('owner', []), 'Add item')).toBeDefined()
+    expect(button(await view('viewer', []), 'Add item')).toBeUndefined()
+  })
+  it('sends all, unassigned, recursive and exact filters to the library read model', async () => {
+    const wrapper = await view('viewer')
+    await form(wrapper, 'Apply filter').trigger('submit'); await flushPromises()
+    expect(libraryApi.listLibrary).toHaveBeenLastCalledWith(1, {})
+    await input(wrapper, 'Filter').setValue('unassigned'); await form(wrapper, 'Apply filter').trigger('submit'); await flushPromises()
+    expect(libraryApi.listLibrary).toHaveBeenLastCalledWith(1, { unassigned: true })
+    await input(wrapper, 'Filter').setValue('location'); await input(wrapper, 'Location').setValue('7'); await form(wrapper, 'Apply filter').trigger('submit'); await flushPromises()
+    expect(libraryApi.listLibrary).toHaveBeenLastCalledWith(1, { locationId: 7, includeDescendants: true })
+    await wrapper.get('input[type="checkbox"]').setValue(false); await form(wrapper, 'Apply filter').trigger('submit'); await flushPromises()
+    expect(libraryApi.listLibrary).toHaveBeenLastCalledWith(1, { locationId: 7, includeDescendants: false })
+  })
+  it('clears filters and restores the unfiltered title list', async () => {
+    const wrapper = await view('viewer')
+    await input(wrapper, 'Filter').setValue('location'); await input(wrapper, 'Location').setValue('7'); await button(wrapper, 'Clear')?.trigger('click'); await flushPromises()
+    expect(input(wrapper, 'Filter').element.value).toBe('all')
+    expect(libraryApi.listLibrary).toHaveBeenLastCalledWith(1, {})
+  })
 })

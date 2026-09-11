@@ -2,7 +2,7 @@
 
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class CatalogEntryCreateInput(BaseModel):
@@ -56,6 +56,7 @@ class EditionCreateInput(BaseModel):
     """Input for creating a concrete edition below the path catalog entry."""
 
     display_name: str = Field(min_length=1, max_length=512)
+    media_format: str | None = Field(default=None, max_length=64)
     release_date: date | None = None
     publisher: str | None = Field(default=None, max_length=255)
     region: str | None = Field(default=None, max_length=64)
@@ -66,6 +67,7 @@ class EditionUpdateInput(BaseModel):
     """Partial input for a concrete edition."""
 
     display_name: str | None = Field(default=None, min_length=1, max_length=512)
+    media_format: str | None = Field(default=None, max_length=64)
     release_date: date | None = None
     publisher: str | None = Field(default=None, max_length=255)
     region: str | None = Field(default=None, max_length=64)
@@ -78,12 +80,85 @@ class EditionResponse(BaseModel):
     id: int
     catalog_entry_id: int
     display_name: str
+    media_format: str | None
     release_date: date | None
     publisher: str | None
     region: str | None
     language: str | None
 
     model_config = {"from_attributes": True}
+
+
+class LibraryTitleSummary(BaseModel):
+    id: int
+    catalog_entry_id: int
+    display_title: str
+    sort_title: str | None
+    type: str
+    edition_count: int
+    copy_count: int
+    media_formats: list[str]
+
+
+class LibraryTitleSearchResult(LibraryTitleSummary):
+    """Compact title context for the Add item title picker."""
+
+
+class AddItemTitleChoice(BaseModel):
+    existing_id: int | None = Field(default=None, gt=0)
+    new: CatalogEntryCreateInput | None = None
+
+    @model_validator(mode="after")
+    def exactly_one_choice(self) -> "AddItemTitleChoice":
+        if (self.existing_id is None) == (self.new is None):
+            raise ValueError("Choose exactly one of existing_id or new")
+        return self
+
+
+class AddItemEditionChoice(BaseModel):
+    existing_id: int | None = Field(default=None, gt=0)
+    new: EditionCreateInput | None = None
+
+    @model_validator(mode="after")
+    def exactly_one_choice(self) -> "AddItemEditionChoice":
+        if (self.existing_id is None) == (self.new is None):
+            raise ValueError("Choose exactly one of existing_id or new")
+        return self
+
+
+class AddItemCopyInput(BaseModel):
+    condition: str | None = Field(default=None, max_length=64)
+    notes: str | None = None
+    location_id: int | None = Field(default=None, gt=0)
+
+
+class AddItemInput(BaseModel):
+    title: AddItemTitleChoice
+    edition: AddItemEditionChoice
+    copy_data: AddItemCopyInput
+
+    @model_validator(mode="before")
+    @classmethod
+    def accept_copy_transport_field(cls, value: object) -> object:
+        if isinstance(value, dict) and "copy" in value:
+            return {**value, "copy_data": value["copy"]}
+        return value
+
+
+class AddItemResponse(BaseModel):
+    catalog_entry_id: int
+    edition_id: int
+    inventory_item_id: int
+
+
+class LibraryEdition(EditionResponse):
+    identifiers: list["IdentifierResponse"]
+    copies: list["InventoryItemResponse"]
+
+
+class LibraryTitleDetail(BaseModel):
+    catalog_entry: CatalogEntryResponse
+    editions: list[LibraryEdition]
 
 
 class IdentifierCreateInput(BaseModel):

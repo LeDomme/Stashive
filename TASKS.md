@@ -142,6 +142,17 @@ Implement a preview-ready multi-stage Docker image that builds the Vue frontend,
 
 Status: complete.
 
+## U03 — Inventory UX Simplification
+
+Status: complete.
+
+Completed checkpoints: U03a; U03b.1, U03b.2, U03b.3a, U03b.3b, and U03b.4; and U03c.1,
+U03c.2, U03c.3a, U03c.3b, and U03c.3c.
+
+The primary collection workflow is Collections → Inventory → Title → Editions → Physical Copies.
+Catalog remains available through Settings → Advanced as a low-level fallback; its APIs and CRUD
+remain supported.
+
 ## T07 — Movie Domain
 
 Milestone: v0.2

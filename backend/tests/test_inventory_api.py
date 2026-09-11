@@ -2,6 +2,7 @@
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import func, select
 
 from app.auth.service import AuthenticationService
 from app.config import Settings
@@ -12,6 +13,7 @@ from app.db.models import (
     CollectionMember,
     Edition,
     Identifier,
+    InventoryItem,
     Location,
     User,
 )
@@ -98,6 +100,216 @@ def add_edition(database: Database, entry_id: int, name: str = "Blu-ray") -> int
         session.add(edition)
         session.commit()
         return edition.id
+
+
+def add_item_payload(
+    title: dict[str, object], edition: dict[str, object], location_id: int | None = None
+) -> dict[str, object]:
+    return {
+        "title": title,
+        "edition": edition,
+        "copy": {"condition": None, "notes": None, "location_id": location_id},
+    }
+
+
+def inventory_counts(database: Database) -> tuple[int, int, int]:
+    with database.session_factory() as session:
+        return tuple(
+            session.scalar(select(func.count()).select_from(model))
+            for model in (CatalogEntry, Edition, InventoryItem)
+        )  # type: ignore[return-value]
+
+
+@pytest.mark.anyio
+async def test_title_search_and_transactional_add_item_cases(
+    database: Database, inventory_context: dict[str, int | dict[str, User]]
+) -> None:
+    collection_id = inventory_context["collection_id"]
+    users = inventory_context["users"]
+    assert isinstance(collection_id, int) and isinstance(users, dict)
+    alien_id = add_entry(database, collection_id, "Alien")
+    existing_edition = add_edition(database, alien_id, "Special Edition")
+    app.state.database = database
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = authenticate(client, database, users["owner"])
+        search = await client.get(f"/api/collections/{collection_id}/library/title-search?q=li")
+        new_all = await client.post(
+            f"/api/collections/{collection_id}/items",
+            headers=headers,
+            json={
+                "title": {
+                    "existing_id": None,
+                    "new": {
+                        "display_title": "Predator",
+                        "type": "movie",
+                        "sort_title": None,
+                        "notes": None,
+                    },
+                },
+                "edition": {
+                    "existing_id": None,
+                    "new": {"display_name": "UHD", "media_format": "UHD Blu-ray"},
+                },
+                "copy": {"condition": "Very Good", "notes": None, "location_id": None},
+            },
+        )
+        new_edition = await client.post(
+            f"/api/collections/{collection_id}/items",
+            headers=headers,
+            json={
+                "title": {"existing_id": alien_id, "new": None},
+                "edition": {
+                    "existing_id": None,
+                    "new": {"display_name": "DVD", "media_format": "DVD"},
+                },
+                "copy": {"condition": None, "notes": None, "location_id": None},
+            },
+        )
+        extra_copy = await client.post(
+            f"/api/collections/{collection_id}/items",
+            headers=headers,
+            json={
+                "title": {"existing_id": alien_id, "new": None},
+                "edition": {"existing_id": existing_edition, "new": None},
+                "copy": {"condition": None, "notes": "second", "location_id": None},
+            },
+        )
+    assert search.status_code == 200 and search.json()[0]["catalog_entry_id"] == alien_id
+    assert new_all.status_code == new_edition.status_code == extra_copy.status_code == 201
+    with database.session_factory() as session:
+        assert session.scalar(select(func.count()).select_from(CatalogEntry)) == 2
+        assert session.scalar(select(func.count()).select_from(Edition)) == 3
+        assert session.scalar(select(func.count()).select_from(InventoryItem)) == 3
+
+
+@pytest.mark.anyio
+async def test_add_item_rejects_invalid_and_foreign_relationships_without_writes(
+    database: Database, inventory_context: dict[str, int | dict[str, User]]
+) -> None:
+    collection_id = inventory_context["collection_id"]
+    other_id = inventory_context["other_collection_id"]
+    users = inventory_context["users"]
+    assert isinstance(collection_id, int) and isinstance(other_id, int) and isinstance(users, dict)
+    alien = add_entry(database, collection_id, "Alien")
+    alien_edition = add_edition(database, alien)
+    predator = add_entry(database, collection_id, "Predator")
+    predator_edition = add_edition(database, predator)
+    foreign_title = add_entry(database, other_id, "Private")
+    foreign_edition = add_edition(database, foreign_title)
+    with database.session_factory() as session:
+        foreign_location = Location(collection_id=other_id, name="Private shelf", type="shelf")
+        session.add(foreign_location)
+        session.commit()
+        foreign_location_id = foreign_location.id
+    app.state.database = database
+    invalid = [
+        add_item_payload(
+            {"existing_id": alien, "new": {"display_title": "New", "type": "movie"}},
+            {"existing_id": alien_edition, "new": None},
+        ),
+        add_item_payload(
+            {"existing_id": None, "new": None}, {"existing_id": alien_edition, "new": None}
+        ),
+        add_item_payload(
+            {"existing_id": alien, "new": None},
+            {"existing_id": alien_edition, "new": {"display_name": "New"}},
+        ),
+        add_item_payload({"existing_id": alien, "new": None}, {"existing_id": None, "new": None}),
+        add_item_payload(
+            {"existing_id": None, "new": {"display_title": "New", "type": "movie"}},
+            {"existing_id": alien_edition, "new": None},
+        ),
+        add_item_payload(
+            {"existing_id": alien, "new": None}, {"existing_id": predator_edition, "new": None}
+        ),
+        add_item_payload(
+            {"existing_id": foreign_title, "new": None},
+            {"existing_id": foreign_edition, "new": None},
+        ),
+        add_item_payload(
+            {"existing_id": alien, "new": None}, {"existing_id": foreign_edition, "new": None}
+        ),
+        add_item_payload(
+            {"existing_id": None, "new": {"display_title": "Rollback", "type": "movie"}},
+            {"existing_id": None, "new": {"display_name": "New"}},
+            foreign_location_id,
+        ),
+        add_item_payload(
+            {"existing_id": alien, "new": None},
+            {"existing_id": None, "new": {"display_name": "Rollback"}},
+            foreign_location_id,
+        ),
+        add_item_payload(
+            {"existing_id": alien, "new": None},
+            {"existing_id": alien_edition, "new": None},
+            foreign_location_id,
+        ),
+    ]
+    before = inventory_counts(database)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = authenticate(client, database, users["owner"])
+        responses = [
+            await client.post(
+                f"/api/collections/{collection_id}/items", json=payload, headers=headers
+            )
+            for payload in invalid
+        ]
+    assert all(response.status_code in {404, 422} for response in responses)
+    assert inventory_counts(database) == before
+
+
+@pytest.mark.anyio
+async def test_add_item_acl_search_contract_and_collection_scope(
+    database: Database, inventory_context: dict[str, int | dict[str, User]]
+) -> None:
+    collection_id = inventory_context["collection_id"]
+    other_id = inventory_context["other_collection_id"]
+    users = inventory_context["users"]
+    assert isinstance(collection_id, int) and isinstance(other_id, int) and isinstance(users, dict)
+    alien = add_entry(database, collection_id, "Alien")
+    edition = add_edition(database, alien)
+    add_entry(database, collection_id, "The Thing")
+    foreign_alien = add_entry(database, other_id, "Alien")
+    for index in range(25):
+        add_entry(database, collection_id, f"Alien {index}")
+    app.state.database = database
+    payload = add_item_payload(
+        {"existing_id": alien, "new": None}, {"existing_id": edition, "new": None}
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        mutation = {
+            actor: await client.post(
+                f"/api/collections/{collection_id}/items",
+                json=payload,
+                headers=authenticate(client, database, users[actor]),
+            )
+            for actor in ("owner", "admin", "editor", "viewer", "outsider", "instance")
+        }
+        search = {
+            actor: await client.get(
+                f"/api/collections/{collection_id}/library/title-search?q=ALI",
+                headers=authenticate(client, database, users[actor]),
+            )
+            for actor in ("owner", "admin", "editor", "viewer", "outsider", "instance")
+        }
+        short = await client.get(
+            f"/api/collections/{collection_id}/library/title-search?q=a",
+            headers=authenticate(client, database, users["owner"]),
+        )
+        sort = await client.get(
+            f"/api/collections/{collection_id}/library/title-search?q=thing",
+            headers=authenticate(client, database, users["owner"]),
+        )
+    assert all(mutation[actor].status_code == 201 for actor in ("owner", "admin", "editor"))
+    assert (
+        mutation["viewer"].status_code == 403
+        and mutation["outsider"].status_code == mutation["instance"].status_code == 404
+    )
+    assert all(search[actor].status_code == 200 for actor in ("owner", "admin", "editor", "viewer"))
+    assert search["outsider"].status_code == search["instance"].status_code == 404
+    assert short.status_code == 422 and sort.status_code == 200
+    assert len(search["owner"].json()) == 20
+    assert all(item["catalog_entry_id"] != foreign_alien for item in search["owner"].json())
 
 
 @pytest.mark.anyio
@@ -405,3 +617,86 @@ async def test_inventory_item_api_supports_assignment_moves_filters_and_privacy(
         and foreign_location.status_code == 404
     )
     assert cleared.json()["location_id"] is None and cleared.json()["condition"] is None
+
+
+@pytest.mark.anyio
+async def test_library_summaries_group_and_filter_matching_copies(
+    database: Database, inventory_context: dict[str, int | dict[str, User]]
+) -> None:
+    collection_id = inventory_context["collection_id"]
+    other_collection_id = inventory_context["other_collection_id"]
+    users = inventory_context["users"]
+    assert (
+        isinstance(collection_id, int)
+        and isinstance(other_collection_id, int)
+        and isinstance(users, dict)
+    )
+    alien_id = add_entry(database, collection_id, "Alien")
+    alien_blu_ray = add_edition(database, alien_id, "Blu-ray")
+    alien_uhd = add_edition(database, alien_id, "UHD")
+    heat_id = add_entry(database, collection_id, "Heat")
+    heat_dvd = add_edition(database, heat_id, "DVD")
+    empty_id = add_entry(database, collection_id, "Empty")
+    add_edition(database, empty_id, "VHS")
+    with database.session_factory() as session:
+        root = Location(collection_id=collection_id, name="Room", type="room")
+        foreign = Location(collection_id=other_collection_id, name="Private", type="room")
+        session.add_all([root, foreign])
+        session.flush()
+        child = Location(collection_id=collection_id, parent_id=root.id, name="Shelf", type="shelf")
+        session.add(child)
+        session.flush()
+        session.add_all(
+            [
+                InventoryItem(edition_id=alien_blu_ray, location_id=root.id),
+                InventoryItem(edition_id=alien_uhd, location_id=child.id),
+                InventoryItem(edition_id=alien_uhd),
+                InventoryItem(edition_id=heat_dvd, location_id=child.id),
+            ]
+        )
+        session.get(Edition, alien_blu_ray).media_format = "Blu-ray"
+        session.get(Edition, alien_uhd).media_format = "UHD Blu-ray"
+        session.commit()
+        root_id, foreign_id = root.id, foreign.id
+    app.state.database = database
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        authenticate(client, database, users["viewer"])
+        unfiltered = await client.get(f"/api/collections/{collection_id}/library")
+        exact = await client.get(
+            f"/api/collections/{collection_id}/library?location_id={root_id}&include_descendants=false"
+        )
+        recursive = await client.get(
+            f"/api/collections/{collection_id}/library?location_id={root_id}"
+        )
+        unassigned = await client.get(f"/api/collections/{collection_id}/library?unassigned=true")
+        conflict = await client.get(
+            f"/api/collections/{collection_id}/library?location_id={root_id}&unassigned=true"
+        )
+        invalid = await client.get(
+            f"/api/collections/{collection_id}/library?include_descendants=false"
+        )
+        foreign = await client.get(
+            f"/api/collections/{collection_id}/library?location_id={foreign_id}"
+        )
+        client.cookies.clear()
+        authenticate(client, database, users["instance"])
+        inaccessible = await client.get(f"/api/collections/{collection_id}/library")
+    assert [
+        (title["display_title"], title["edition_count"], title["copy_count"])
+        for title in unfiltered.json()
+    ] == [("Alien", 2, 3), ("Empty", 1, 0), ("Heat", 1, 1)]
+    assert unfiltered.json()[0]["media_formats"] == ["Blu-ray", "UHD Blu-ray"]
+    assert [
+        (title["display_title"], title["edition_count"], title["copy_count"])
+        for title in exact.json()
+    ] == [("Alien", 1, 1)]
+    assert [
+        (title["display_title"], title["edition_count"], title["copy_count"])
+        for title in recursive.json()
+    ] == [("Alien", 2, 2), ("Heat", 1, 1)]
+    assert [
+        (title["display_title"], title["edition_count"], title["copy_count"])
+        for title in unassigned.json()
+    ] == [("Alien", 1, 1)]
+    assert conflict.status_code == 422 and invalid.status_code == 422 and foreign.status_code == 404
+    assert inaccessible.status_code == 404

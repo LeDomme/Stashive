@@ -105,6 +105,12 @@ Do not make Pinia a dumping ground for all state.
 
 Prefer URL state for catalogue filters that users should be able to bookmark.
 
+The primary collection library uses collection-scoped summary and title-detail read models over
+the existing CatalogEntry → Edition → InventoryItem hierarchy. The list does not issue separate
+edition or copy reads per title; title detail supplies editions, identifiers, and copies together.
+Mutations continue to use their domain APIs, while transactional `POST /items` orchestrates the
+guided Add item flow.
+
 ## Deployment direction
 
 Development:
