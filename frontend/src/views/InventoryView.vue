@@ -3,14 +3,12 @@ import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { ApiError } from "@/api/client";
 import type { LocationTreeNode } from "@/api/locations";
-import { useCatalogStore } from "@/stores/catalog";
 import { useCollectionsStore } from "@/stores/collections";
 import { useLibraryStore } from "@/stores/library";
 import { useLocationsStore } from "@/stores/locations";
 
 const route = useRoute();
 const collections = useCollectionsStore();
-const catalog = useCatalogStore();
 const library = useLibraryStore();
 const locations = useLocationsStore();
 const error = ref("");
@@ -50,11 +48,8 @@ async function load() {
   error.value = "";
   await collections.loadCollection(id.value);
   if (!collections.collection) return;
-  await Promise.all([library.load(id.value, filterPayload()), catalog.load(id.value), locations.loadTree(id.value)]);
+  await Promise.all([library.load(id.value, filterPayload()), locations.loadTree(id.value)]);
   if (library.error) error.value = message(library.error);
-  try {
-    await catalog.load(id.value);
-  } catch (cause) { error.value = message(cause); }
 }
 async function clearFilters() {
   filter.value = "all"; filterLocation.value = ""; descendants.value = true; await load();
