@@ -51,6 +51,8 @@ DELETE /api/collections/{collection_id}/inventory-items/{item_id}
 
 GET    /api/collections/{collection_id}/library
 GET    /api/collections/{collection_id}/library/{catalog_entry_id}
+GET    /api/collections/{collection_id}/library/title-search?q=al
+POST   /api/collections/{collection_id}/items
 ```
 
 Final endpoint design may evolve with implementation.
@@ -59,6 +61,10 @@ Library endpoints are collection-scoped VIEW read models over the existing
 CatalogEntry → Edition → InventoryItem hierarchy; they introduce no persisted
 library/grouping table. The list returns one summary per title and the detail
 embeds editions, identifiers, and physical copies.
+
+`POST /items` is the transactional user-oriented Add item use case. It explicitly
+chooses either an existing or new title and edition, then always creates one new
+physical copy; it does not change the CatalogEntry → Edition → InventoryItem model.
 
 Location GET returns the complete nested tree for a collection. Roots and children are ordered
 case-insensitively by name, then by ID. Create accepts `name`, `type`, optional `description`,

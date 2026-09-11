@@ -2,6 +2,7 @@
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import func, select
 
 from app.auth.service import AuthenticationService
 from app.config import Settings
@@ -99,6 +100,68 @@ def add_edition(database: Database, entry_id: int, name: str = "Blu-ray") -> int
         session.add(edition)
         session.commit()
         return edition.id
+
+
+@pytest.mark.anyio
+async def test_title_search_and_transactional_add_item_cases(
+    database: Database, inventory_context: dict[str, int | dict[str, User]]
+) -> None:
+    collection_id = inventory_context["collection_id"]
+    users = inventory_context["users"]
+    assert isinstance(collection_id, int) and isinstance(users, dict)
+    alien_id = add_entry(database, collection_id, "Alien")
+    existing_edition = add_edition(database, alien_id, "Special Edition")
+    app.state.database = database
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = authenticate(client, database, users["owner"])
+        search = await client.get(f"/api/collections/{collection_id}/library/title-search?q=li")
+        new_all = await client.post(
+            f"/api/collections/{collection_id}/items",
+            headers=headers,
+            json={
+                "title": {
+                    "existing_id": None,
+                    "new": {
+                        "display_title": "Predator",
+                        "type": "movie",
+                        "sort_title": None,
+                        "notes": None,
+                    },
+                },
+                "edition": {
+                    "existing_id": None,
+                    "new": {"display_name": "UHD", "media_format": "UHD Blu-ray"},
+                },
+                "copy": {"condition": "Very Good", "notes": None, "location_id": None},
+            },
+        )
+        new_edition = await client.post(
+            f"/api/collections/{collection_id}/items",
+            headers=headers,
+            json={
+                "title": {"existing_id": alien_id, "new": None},
+                "edition": {
+                    "existing_id": None,
+                    "new": {"display_name": "DVD", "media_format": "DVD"},
+                },
+                "copy": {"condition": None, "notes": None, "location_id": None},
+            },
+        )
+        extra_copy = await client.post(
+            f"/api/collections/{collection_id}/items",
+            headers=headers,
+            json={
+                "title": {"existing_id": alien_id, "new": None},
+                "edition": {"existing_id": existing_edition, "new": None},
+                "copy": {"condition": None, "notes": "second", "location_id": None},
+            },
+        )
+    assert search.status_code == 200 and search.json()[0]["catalog_entry_id"] == alien_id
+    assert new_all.status_code == new_edition.status_code == extra_copy.status_code == 201
+    with database.session_factory() as session:
+        assert session.scalar(select(func.count()).select_from(CatalogEntry)) == 2
+        assert session.scalar(select(func.count()).select_from(Edition)) == 3
+        assert session.scalar(select(func.count()).select_from(InventoryItem)) == 3
 
 
 @pytest.mark.anyio

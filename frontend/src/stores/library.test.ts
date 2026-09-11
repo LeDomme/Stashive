@@ -23,4 +23,12 @@ describe('library store', () => {
     await loading
     expect(store.title?.catalog_entry.display_title).toBe('Heat')
   })
+  it('searches titles and forwards typed add-item payloads', async () => {
+    vi.mocked(api.searchTitles).mockResolvedValue([{ id: 1, catalog_entry_id: 1, display_title: 'Alien', sort_title: null, type: 'movie', edition_count: 1, copy_count: 1, media_formats: [] }])
+    vi.mocked(api.addItem).mockResolvedValue({ catalog_entry_id: 1, edition_id: 2, inventory_item_id: 3 })
+    const store = useLibraryStore(); await store.searchTitles(2, 'ali')
+    const payload = { title: { existing_id: 1, new: null }, edition: { existing_id: 2, new: null }, copy: { condition: null, notes: null, location_id: null } }
+    await store.addItem(2, payload)
+    expect(store.searchResults[0].display_title).toBe('Alien'); expect(api.addItem).toHaveBeenCalledWith(2, payload)
+  })
 })
