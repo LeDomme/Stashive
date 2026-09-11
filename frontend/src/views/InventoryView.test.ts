@@ -50,6 +50,10 @@ describe('InventoryView', () => {
     expect(wrapper.get('.library-card__cover').text()).toBe('Stashive')
     expect(wrapper.find('.inventory-list').exists()).toBe(false)
   })
+  it('uses the consistent three-item primary collection subnavigation', async () => {
+    const wrapper = await view()
+    expect(wrapper.get('[aria-label="Collection navigation"]').findAll('a').map((link) => link.text())).toEqual(['Inventory', 'Locations', 'Settings'])
+  })
   it('renders singular result and card counts', async () => {
     const wrapper = await view('viewer', [{ ...titles[0], edition_count: 1, copy_count: 1, media_formats: [] }])
     expect(wrapper.get('.filter-toolbar__summary').text()).toBe('1 title · 1 physical copy')

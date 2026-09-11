@@ -37,6 +37,11 @@ async function mountView(
 afterEach(() => vi.clearAllMocks())
 
 describe('LocationsView', () => {
+  it('uses the consistent three-item primary collection subnavigation', async () => {
+    const wrapper = await mountView()
+    expect(wrapper.get('[aria-label="Collection navigation"]').findAll('a').map((link) => link.text())).toEqual(['Inventory', 'Locations', 'Settings'])
+  })
+
   it('renders a nested tree in backend order with types and descriptions', async () => {
     const wrapper = await mountView()
     expect(wrapper.get('[aria-label="Location tree"]').text()).toContain('House')

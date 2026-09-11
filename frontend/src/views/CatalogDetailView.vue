@@ -237,9 +237,9 @@ async function remove() {
 
 <template>
   <section class="page-content workspace-content">
-    <RouterLink class="back-link" :to="{ name: 'catalog', params: { collectionId: id() } }">← Catalog</RouterLink>
+    <RouterLink class="back-link" :to="{ name: 'catalog', params: { collectionId: id() } }">← Advanced catalog</RouterLink>
     <div v-if="catalog.entry">
-      <div class="page-heading"><div><p class="eyebrow">Catalog entry</p><h1>{{ catalog.entry.display_title }}</h1></div></div>
+      <div class="page-heading"><div><p class="eyebrow">Advanced catalog entry</p><h1>{{ catalog.entry.display_title }}</h1></div></div>
       <p>Type: {{ catalog.entry.type }}</p>
       <p v-if="catalog.entry.sort_title">Sort title: {{ catalog.entry.sort_title }}</p>
       <p v-if="catalog.entry.notes">{{ catalog.entry.notes }}</p>

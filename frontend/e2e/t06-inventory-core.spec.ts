@@ -26,6 +26,13 @@ test('generic inventory workflow supports duplicate copies and location states',
   await page.getByRole('button', { name: 'Create identifier' }).click()
 
   await page.goto(`/collections/${collectionId}/inventory`)
+  const collectionNavigation = page.getByLabel('Collection navigation')
+  await expect(collectionNavigation.getByRole('link')).toHaveText(['Inventory', 'Locations', 'Settings'])
+  await collectionNavigation.getByRole('link', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Advanced' }).click()
+  await page.getByRole('link', { name: 'Open advanced catalog' }).click()
+  await expect(page.getByRole('heading', { name: 'Advanced catalog' })).toBeVisible()
+  await page.goto(`/collections/${collectionId}/inventory`)
   await page.getByRole('button', { name: 'Add item' }).click()
   await page.getByLabel('Edition').selectOption({ label: 'T06 Browser Title — T06 Browser Edition' })
   await page.getByRole('button', { name: 'Create physical copy' }).click()

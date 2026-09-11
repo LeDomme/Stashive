@@ -91,7 +91,6 @@ watch(() => route.params.collectionId, load, { immediate: true });
       </div>
       <nav class="collection-nav" aria-label="Collection navigation">
         <RouterLink :to="{ name: 'inventory', params: { collectionId: id } }">Inventory</RouterLink>
-        <RouterLink :to="{ name: 'catalog', params: { collectionId: id } }">Catalog</RouterLink>
         <RouterLink :to="{ name: 'locations', params: { collectionId: id } }">Locations</RouterLink>
         <RouterLink :to="{ name: 'collection-settings', params: { collectionId: id } }">Settings</RouterLink>
       </nav>
@@ -114,7 +113,7 @@ watch(() => route.params.collectionId, load, { immediate: true });
       </form>
       <div v-if="!library.titles.length" class="empty-state">
         <h2>{{ filter === 'all' ? 'No titles yet' : 'No titles match this filter' }}</h2>
-        <p>{{ canEdit ? 'Add an item once a catalog edition is available.' : 'This collection has no matching titles.' }}</p>
+        <p>{{ canEdit ? 'Add an item once an edition is available.' : 'This collection has no matching titles.' }}</p>
         <button v-if="canEdit" @click="beginAdd">Add item</button>
       </div>
       <ul v-else class="library-grid" aria-label="Inventory titles">

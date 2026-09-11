@@ -31,7 +31,7 @@ const transferUsername = ref("");
 const confirmingTransfer = ref(false);
 const transferError = ref("");
 const transferring = ref(false);
-const activeSection = ref<"general" | "sharing" | "ownership" | "danger">("general");
+const activeSection = ref<"general" | "sharing" | "ownership" | "advanced" | "danger">("general");
 
 const canEdit = computed(() =>
   ["owner", "admin"].includes(collections.collection?.role ?? ""),
@@ -39,6 +39,9 @@ const canEdit = computed(() =>
 const canDelete = computed(() => collections.collection?.role === "owner");
 const canManageMembers = computed(() =>
   ["owner", "admin"].includes(collections.collection?.role ?? ""),
+);
+const canAccessAdvanced = computed(() =>
+  ["owner", "admin", "editor"].includes(collections.collection?.role ?? ""),
 );
 const canTransferOwnership = computed(
   () => collections.collection?.role === "owner",
@@ -235,9 +238,6 @@ async function removeCollection(): Promise<void> {
         <RouterLink :to="`/collections/${collections.collection.id}/inventory`"
           >Inventory</RouterLink
         >
-        <RouterLink :to="`/collections/${collections.collection.id}/catalog`"
-          >Catalog</RouterLink
-        >
         <RouterLink :to="`/collections/${collections.collection.id}/locations`"
           >Locations</RouterLink
         >
@@ -251,6 +251,7 @@ async function removeCollection(): Promise<void> {
           <button type="button" class="button-ghost" :class="{ 'is-active': activeSection === 'general' }" @click="activeSection = 'general'">General</button>
           <button v-if="canManageMembers" type="button" class="button-ghost" :class="{ 'is-active': activeSection === 'sharing' }" @click="activeSection = 'sharing'">Sharing</button>
           <button v-if="canTransferOwnership" type="button" class="button-ghost" :class="{ 'is-active': activeSection === 'ownership' }" @click="activeSection = 'ownership'">Ownership</button>
+          <button v-if="canAccessAdvanced" type="button" class="button-ghost" :class="{ 'is-active': activeSection === 'advanced' }" @click="activeSection = 'advanced'">Advanced</button>
           <button v-if="canDelete" type="button" class="button-ghost danger-link" :class="{ 'is-active': activeSection === 'danger' }" @click="activeSection = 'danger'">Danger zone</button>
         </nav>
         <div class="management-panel">
@@ -421,6 +422,25 @@ async function removeCollection(): Promise<void> {
         <p v-if="transferError" class="form-error" role="alert">
           {{ transferError }}
         </p>
+      </section>
+
+      <section
+        v-if="activeSection === 'advanced' && canAccessAdvanced"
+        class="panel settings-section"
+        aria-labelledby="advanced-catalog-heading"
+      >
+        <p class="eyebrow">Advanced</p>
+        <h2 id="advanced-catalog-heading">Advanced catalog</h2>
+        <p>
+          Directly manage the underlying title and edition records. For normal
+          collection management, use Inventory.
+        </p>
+        <RouterLink
+          class="button-secondary button-link"
+          :to="{ name: 'catalog', params: { collectionId: collections.collection.id } }"
+        >
+          Open advanced catalog
+        </RouterLink>
       </section>
 
       <form

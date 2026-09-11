@@ -230,8 +230,6 @@ watch(() => route.params.collectionId, load, { immediate: true });
       <nav class="collection-nav" aria-label="Collection navigation">
         <RouterLink :to="`/collections/${collectionId}/inventory`"
           >Inventory</RouterLink
-        ><RouterLink :to="`/collections/${collectionId}/catalog`"
-          >Catalog</RouterLink
         ><RouterLink :to="`/collections/${collectionId}/locations`"
           >Locations</RouterLink
         ><RouterLink :to="`/collections/${collectionId}/settings`"
