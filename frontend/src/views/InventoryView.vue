@@ -2,24 +2,18 @@
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { ApiError } from "@/api/client";
-import type { CatalogEntry, Edition } from "@/api/catalog";
 import type { LocationTreeNode } from "@/api/locations";
 import { useCatalogStore } from "@/stores/catalog";
 import { useCollectionsStore } from "@/stores/collections";
-import { useInventoryStore } from "@/stores/inventory";
 import { useLibraryStore } from "@/stores/library";
 import { useLocationsStore } from "@/stores/locations";
 
 const route = useRoute();
 const collections = useCollectionsStore();
 const catalog = useCatalogStore();
-const inventory = useInventoryStore();
 const library = useLibraryStore();
 const locations = useLocationsStore();
-const editions = ref<(Edition & { title: string })[]>([]);
-const adding = ref(false);
 const error = ref("");
-const form = ref({ edition_id: "", condition: "", notes: "" });
 const filter = ref<"all" | "unassigned" | "location">("all");
 const filterLocation = ref("");
 const descendants = ref(true);
@@ -51,7 +45,6 @@ function filterPayload() {
   }
   return {};
 }
-function resetForm() { form.value = { edition_id: "", condition: "", notes: "" }; }
 
 async function load() {
   error.value = "";
@@ -60,24 +53,11 @@ async function load() {
   await Promise.all([library.load(id.value, filterPayload()), catalog.load(id.value), locations.loadTree(id.value)]);
   if (library.error) error.value = message(library.error);
   try {
-    const groups = await Promise.all(catalog.entries.map(async (entry: CatalogEntry) => ({
-      entry, editions: await catalog.listEditions(id.value, entry.id),
-    })));
-    editions.value = groups.flatMap((group) => group.editions.map((edition) => ({ ...edition, title: group.entry.display_title })));
+    await catalog.load(id.value);
   } catch (cause) { error.value = message(cause); }
 }
 async function clearFilters() {
   filter.value = "all"; filterLocation.value = ""; descendants.value = true; await load();
-}
-function beginAdd() { error.value = ""; resetForm(); adding.value = true; }
-async function create() {
-  const editionId = Number(form.value.edition_id);
-  if (!editionId) { error.value = "Choose an edition."; return; }
-  try {
-    await inventory.createInventoryItem(id.value, { edition_id: editionId, condition: form.value.condition.trim() || null, notes: form.value.notes.trim() || null });
-    adding.value = false; resetForm(); await library.load(id.value, filterPayload());
-    if (library.error) error.value = message(library.error);
-  } catch (cause) { error.value = message(cause); }
 }
 watch(() => route.params.collectionId, load, { immediate: true });
 </script>
@@ -87,7 +67,7 @@ watch(() => route.params.collectionId, load, { immediate: true });
     <template v-if="collections.collection">
       <div class="page-heading">
         <div><p class="eyebrow">{{ collections.collection.name }}</p><h1>Inventory</h1></div>
-        <button v-if="canEdit && library.titles.length" @click="beginAdd">Add item</button>
+        <RouterLink v-if="canEdit && library.titles.length" class="button-link" :to="{name:'inventory-add',params:{collectionId:id}}">Add item</RouterLink>
       </div>
       <nav class="collection-nav" aria-label="Collection navigation">
         <RouterLink :to="{ name: 'inventory', params: { collectionId: id } }">Inventory</RouterLink>
@@ -104,17 +84,10 @@ watch(() => route.params.collectionId, load, { immediate: true });
         <p class="filter-toolbar__summary">{{ library.titles.length }} {{ library.titles.length === 1 ? 'title' : 'titles' }} · {{ totalCopies }} physical {{ totalCopies === 1 ? 'copy' : 'copies' }}</p>
       </section>
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
-      <form v-if="adding" class="collection-form panel modal-panel" @submit.prevent="create">
-        <h2>Add item</h2>
-        <label>Edition<select v-model="form.edition_id"><option value="" disabled>Choose an edition</option><option v-for="edition in editions" :key="edition.id" :value="String(edition.id)">{{ edition.title }} — {{ edition.display_name }}</option></select></label>
-        <label>Condition <span class="optional">optional</span><input v-model="form.condition" /></label>
-        <label>Notes <span class="optional">optional</span><textarea v-model="form.notes" /></label>
-        <div class="action-row"><button>Create physical copy</button><button type="button" class="button-secondary" @click="adding = false; resetForm()">Cancel</button></div>
-      </form>
       <div v-if="!library.titles.length" class="empty-state">
         <h2>{{ filter === 'all' ? 'No titles yet' : 'No titles match this filter' }}</h2>
         <p>{{ canEdit ? 'Add an item once an edition is available.' : 'This collection has no matching titles.' }}</p>
-        <button v-if="canEdit" @click="beginAdd">Add item</button>
+        <RouterLink v-if="canEdit" class="button-link" :to="{name:'inventory-add',params:{collectionId:id}}">Add item</RouterLink>
       </div>
       <ul v-else class="library-grid" aria-label="Inventory titles">
         <li v-for="title in library.titles" :key="title.catalog_entry_id" class="library-card">

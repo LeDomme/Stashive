@@ -32,20 +32,20 @@ New collection
 -> optional members
 ```
 
-## 3. Manual movie entry
+## 3. Add an item
 
 ```text
 Add item
--> search existing title
-   or create title
--> choose/create edition
--> create physical copy
--> location
--> rip state
--> save
+Collections -> Inventory -> Add item
+-> explicitly choose an existing title or create a new title
+-> explicitly choose an existing edition or create a new edition
+-> add physical copy details and optional location
+-> save through one transactional Add Item request
+-> title detail
 ```
 
-Avoid forcing provider lookup for manual entry.
+The normal flow never requires Advanced catalog and never automatically merges title matches.
+U03c.2 is complete; U03c.3 adds optional presets.
 
 ## Location tree
 

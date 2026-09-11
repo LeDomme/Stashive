@@ -4,14 +4,14 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as catalogApi from '@/api/catalog'
 import * as collectionsApi from '@/api/collections'
-import * as inventoryApi from '@/api/inventory'
 import * as libraryApi from '@/api/library'
 import * as locationsApi from '@/api/locations'
 import InventoryView from './InventoryView.vue'
 
-vi.mock('@/api/catalog'); vi.mock('@/api/collections'); vi.mock('@/api/inventory'); vi.mock('@/api/library'); vi.mock('@/api/locations')
+vi.mock('@/api/catalog'); vi.mock('@/api/collections'); vi.mock('@/api/library'); vi.mock('@/api/locations')
 const router = createRouter({ history: createMemoryHistory(), routes: [
   { path: '/collections/:collectionId/inventory', name: 'inventory', component: InventoryView },
+  { path: '/collections/:collectionId/inventory/add', name: 'inventory-add', component: InventoryView },
   { path: '/collections/:collectionId/inventory/:catalogEntryId', name: 'inventory-title', component: InventoryView },
   { path: '/collections/:collectionId/catalog', name: 'catalog', component: InventoryView },
   { path: '/collections/:collectionId/locations', name: 'locations', component: InventoryView },
@@ -36,7 +36,7 @@ async function view(role: 'owner' | 'admin' | 'editor' | 'viewer' = 'owner', sum
   await flushPromises()
   return wrapper
 }
-function button(wrapper: VueWrapper, name: string) { return wrapper.findAll('button').find((candidate) => candidate.text() === name) }
+function button(wrapper: VueWrapper, name: string) { return wrapper.findAll('button, a').find((candidate) => candidate.text() === name) }
 function input(wrapper: VueWrapper, label: string) { const field = wrapper.findAll('label').find((candidate) => candidate.text().startsWith(label)); if (!field) throw new Error(label); return field.get('input, textarea, select') }
 function form(wrapper: VueWrapper, text: string) { const found = wrapper.findAll('form').find((candidate) => candidate.text().includes(text)); if (!found) throw new Error(text); return found }
 afterEach(() => vi.clearAllMocks())
@@ -70,15 +70,11 @@ describe('InventoryView', () => {
     for (const role of ['owner', 'admin', 'editor'] as const) expect(button(await view(role), 'Add item')).toBeDefined()
     expect(button(await view('viewer'), 'Add item')).toBeUndefined()
   })
-  it('uses the existing physical-copy form from Add item and refreshes the library summary', async () => {
-    vi.mocked(inventoryApi.createInventoryItem).mockResolvedValue({ id: 4, edition_id: 3, condition: null, notes: null, location_id: null, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00' })
+  it('routes Add item to the guided inventory flow', async () => {
     const wrapper = await view()
-    await button(wrapper, 'Add item')?.trigger('click')
-    await input(wrapper, 'Edition').setValue('3')
-    await form(wrapper, 'Create physical copy').trigger('submit')
+    await wrapper.find('a.button-link').trigger('click')
     await flushPromises()
-    expect(inventoryApi.createInventoryItem).toHaveBeenCalledWith(1, { edition_id: 3, condition: null, notes: null })
-    expect(libraryApi.listLibrary).toHaveBeenLastCalledWith(1, {})
+    expect(router.currentRoute.value.name).toBe('inventory-add')
   })
   it('shows role-aware empty states', async () => {
     expect((await view('owner', [])).text()).toContain('No titles yet')

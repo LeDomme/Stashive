@@ -8,6 +8,7 @@ import LocationsView from '@/views/LocationsView.vue'
 import CatalogView from '@/views/CatalogView.vue'
 import CatalogDetailView from '@/views/CatalogDetailView.vue'
 import InventoryView from '@/views/InventoryView.vue'
+import InventoryAddItemView from '@/views/InventoryAddItemView.vue'
 import InventoryTitlePlaceholderView from '@/views/InventoryTitlePlaceholderView.vue'
 import InventoryTitleManagementView from '@/views/InventoryTitleManagementView.vue'
 import InventoryEditionManagementView from '@/views/InventoryEditionManagementView.vue'
@@ -33,6 +34,7 @@ const router = createRouter({
     { path: '/collections/:collectionId/catalog', name: 'catalog', component: CatalogView },
     { path: '/collections/:collectionId/catalog/:entryId', name: 'catalog-detail', component: CatalogDetailView },
     { path: '/collections/:collectionId/inventory', name: 'inventory', component: InventoryView },
+    { path: '/collections/:collectionId/inventory/add', name: 'inventory-add', component: InventoryAddItemView },
     { path: '/collections/:collectionId/inventory/:catalogEntryId/edit', name: 'inventory-title-edit', component: InventoryTitleManagementView },
     { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/new', name: 'inventory-edition-new', component: InventoryEditionManagementView },
     { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/:editionId/edit', name: 'inventory-edition-edit', component: InventoryEditionManagementView },
