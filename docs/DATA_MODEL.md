@@ -71,6 +71,9 @@ Initial type examples:
 
 Do not use collection type as a giant switch in unrelated code. Specialized modules own their behavior.
 
+The normal inventory create flow derives this internal type from the collection type. It does not
+ask users to choose a technical `catalog_entries.type` value.
+
 ### collection_members
 
 Links non-owner users to collections. Ownership is represented solely by
@@ -118,6 +121,9 @@ Represents a concrete edition/product.
 `media_format` is an optional free-form string on the edition (for example DVD,
 Blu-ray, or UHD Blu-ray). A title may have editions in multiple formats, so it
 does not belong on `catalog_entries`.
+
+The UI may offer convenient preset values, but this is not a database enum or whitelist: values
+such as `Video CD` remain valid and existing unknown values must be preserved during editing.
 
 Examples:
 - Alien German Blu-ray
@@ -170,6 +176,9 @@ Multiple inventory items may reference the same edition.
 Each inventory item represents exactly one physical copy; there is no quantity field.
 `location_id` is nullable: an item may be unassigned or assigned to exactly one
 location in its collection.
+
+`condition` is likewise optional free-form text. UI presets are convenience only, so values such
+as `Sealed` remain valid and are not transformed on edit.
 
 ## Locations
 

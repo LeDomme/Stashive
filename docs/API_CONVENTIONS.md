@@ -65,6 +65,16 @@ embeds editions, identifiers, and physical copies.
 `POST /items` is the transactional user-oriented Add item use case. It explicitly
 chooses either an existing or new title and edition, then always creates one new
 physical copy; it does not change the CatalogEntry → Edition → InventoryItem model.
+It supports exactly these choices: new title + new edition + copy, existing title + new edition +
+copy, and existing title + existing edition + copy. Validation or persistence failures roll the
+whole operation back; no partial title, edition, or copy is retained.
+
+The normal UI derives a new `CatalogEntry.type` from `Collection.type`; it does not ask users to
+choose an internal catalog-entry type. Title search may suggest existing titles, but neither exact
+matches nor fuzzy matches are selected or merged automatically.
+
+`Edition.media_format` is nullable free-form text on an edition, rather than a catalog-entry field
+or backend enum. The UI offers presets for common values, but API clients may send custom strings.
 
 Location GET returns the complete nested tree for a collection. Roots and children are ordered
 case-insensitively by name, then by ID. Create accepts `name`, `type`, optional `description`,
