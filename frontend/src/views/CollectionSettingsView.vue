@@ -235,7 +235,7 @@ async function removeCollection(): Promise<void> {
       </div>
 
       <nav class="collection-nav" aria-label="Collection navigation">
-        <RouterLink :to="`/collections/${collections.collection.id}/inventory`"
+        <div class="collection-nav__links"><RouterLink :to="`/collections/${collections.collection.id}/inventory`"
           >Inventory</RouterLink
         >
         <RouterLink :to="`/collections/${collections.collection.id}/locations`"
@@ -243,7 +243,7 @@ async function removeCollection(): Promise<void> {
         >
         <RouterLink :to="`/collections/${collections.collection.id}/settings`"
           >Settings</RouterLink
-        >
+        ></div>
       </nav>
 
       <div class="management-layout settings-management">

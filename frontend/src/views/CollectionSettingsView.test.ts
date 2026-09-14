@@ -53,6 +53,6 @@ describe('CollectionSettingsView', () => {
   it('uses the consistent three-item primary collection subnavigation', async () => {
     const wrapper = await view('owner')
 
-    expect(wrapper.get('[aria-label="Collection navigation"]').findAll('a').map((link) => link.text())).toEqual(['Inventory', 'Locations', 'Settings'])
+    expect(wrapper.get('[aria-label="Collection navigation"]').get('.collection-nav__links').findAll('a').map((link) => link.text())).toEqual(['Inventory', 'Locations', 'Settings'])
   })
 })

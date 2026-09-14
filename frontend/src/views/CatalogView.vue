@@ -40,9 +40,9 @@ async function create() {
     </div>
 
     <nav class="collection-nav" aria-label="Collection navigation">
-      <RouterLink :to="{ name: 'inventory', params: { collectionId: id() } }">Inventory</RouterLink>
+      <div class="collection-nav__links"><RouterLink :to="{ name: 'inventory', params: { collectionId: id() } }">Inventory</RouterLink>
       <RouterLink :to="{ name: 'locations', params: { collectionId: id() } }">Locations</RouterLink>
-      <RouterLink :to="{ name: 'collection-settings', params: { collectionId: id() } }">Settings</RouterLink>
+      <RouterLink :to="{ name: 'collection-settings', params: { collectionId: id() } }">Settings</RouterLink></div>
     </nav>
     <RouterLink class="back-link" :to="{ name: 'collection-settings', params: { collectionId: id() } }">← Back to Settings</RouterLink>
 

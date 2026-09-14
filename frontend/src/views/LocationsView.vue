@@ -223,18 +223,15 @@ watch(() => route.params.collectionId, load, { immediate: true });
           <p class="eyebrow">{{ collections.collection.name }}</p>
           <h1 id="locations-heading">Locations</h1>
         </div>
-        <button v-if="canEdit" type="button" @click="startRoot">
-          Add root location
-        </button>
       </div>
       <nav class="collection-nav" aria-label="Collection navigation">
-        <RouterLink :to="`/collections/${collectionId}/inventory`"
+        <div class="collection-nav__links"><RouterLink :to="`/collections/${collectionId}/inventory`"
           >Inventory</RouterLink
         ><RouterLink :to="`/collections/${collectionId}/locations`"
           >Locations</RouterLink
         ><RouterLink :to="`/collections/${collectionId}/settings`"
           >Settings</RouterLink
-        >
+        ></div><button v-if="canEdit" type="button" class="collection-nav__action" @click="startRoot">Add root location</button>
       </nav>
       <div v-if="locations.tree.length || creatingRoot" class="locations-workspace">
       <div class="management-layout">

@@ -51,7 +51,7 @@ function closeCreate(): void {
     <div class="page-heading">
       <div>
         <p class="eyebrow">Collections</p>
-        <h1 id="collections-heading">Collections</h1>
+        <h1 id="collections-heading">Your collections</h1>
         <p>Your physical collections, ready to organize and share.</p>
       </div>
       <button type="button" @click="creatingOpen = true">New collection</button>
