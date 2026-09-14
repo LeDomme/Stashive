@@ -124,6 +124,24 @@ body::before {
   margin-bottom: 2rem;
 }
 
+.collection-form > section {
+  display: grid;
+  gap: 1rem;
+}
+
+.form-field-group {
+  display: grid;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+
+.form-field-group__heading {
+  margin: 0.25rem 0 0;
+  color: var(--stashive-mint);
+  font-size: 0.9rem;
+  font-weight: 650;
+}
+
 .auth-form {
   display: grid;
   gap: 1rem;
@@ -148,6 +166,61 @@ label {
   display: grid;
   gap: 0.4rem;
   font-weight: 700;
+}
+
+.multi-preset-field {
+  display: grid;
+  gap: 0.65rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.multi-preset-field legend {
+  padding: 0;
+  font-weight: 700;
+}
+
+.multi-preset-field__selected,
+.multi-preset-field__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.multi-preset-field__chip,
+.multi-preset-field__option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.multi-preset-field__option input {
+  width: auto;
+  margin: 0;
+}
+
+.multi-preset-field__custom {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.multi-preset-field__custom label {
+  grid-column: 1 / -1;
+}
+
+.field-hint {
+  margin: 0;
+  color: var(--stashive-mint);
+  font-size: 0.9rem;
 }
 
 input,

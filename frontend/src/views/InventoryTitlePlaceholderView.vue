@@ -36,6 +36,9 @@ function copiesFor(copies: InventoryItem[]) {
 function titleType(type: string) {
   return type.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
+function regionLabel(region: string) {
+  return /^region\b/i.test(region) || /no region coding/i.test(region) ? region : `Region ${region}`;
+}
 function detailError() {
   if (library.error instanceof ApiError && library.error.status === 404) return "This title is not available.";
   return "This title could not be loaded. Please try again.";
@@ -80,7 +83,7 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
             </div>
           </header>
           <div v-if="edition.release_date || edition.regions.length || edition.languages.length || edition.publisher" class="edition-detail-card__metadata">
-            <p v-if="edition.release_date || edition.regions.length || edition.languages.length">{{ [edition.release_date, edition.regions.length && `Region ${edition.regions.join(', ')}`, edition.languages.join(', ')].filter(Boolean).join(" · ") }}</p>
+            <p v-if="edition.release_date || edition.regions.length || edition.languages.length">{{ [edition.release_date, edition.regions.map(regionLabel).join(' · '), edition.languages.join(' · ')].filter(Boolean).join(" · ") }}</p>
             <p v-if="edition.publisher">{{ edition.publisher }}</p>
           </div>
           <section class="edition-detail-card__section">

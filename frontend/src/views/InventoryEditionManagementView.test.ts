@@ -17,8 +17,8 @@ const router = createRouter({ history: createMemoryHistory(), routes: [
 ] })
 const edition = { id: 4, catalog_entry_id: 3, display_name: 'Special Edition', media_format: 'Blu-ray', release_date: '2003-01-01', publisher: 'Fox', regions: ['B'], languages: ['English'], identifiers: [{ id: 5, edition_id: 4, type: 'EAN', value: '123', source: 'manual' }], copies: [] }
 const detail = { catalog_entry: { id: 3, collection_id: 2, display_title: 'Alien', type: 'movie', sort_title: null, notes: null }, editions: [edition] }
-async function view(path = '/collections/2/inventory/3/editions/4/edit', role: 'editor' | 'viewer' = 'editor', response = detail) {
-  vi.mocked(collectionsApi.getCollection).mockResolvedValue({ id: 2, name: 'Films', type: 'movies', description: null, role, owner: { id: 1, username: 'owner', display_name: null } })
+async function view(path = '/collections/2/inventory/3/editions/4/edit', role: 'editor' | 'viewer' = 'editor', response = detail, collectionType = 'movies') {
+  vi.mocked(collectionsApi.getCollection).mockResolvedValue({ id: 2, name: 'Films', type: collectionType, description: null, role, owner: { id: 1, username: 'owner', display_name: null } })
   vi.mocked(libraryApi.getLibraryTitle).mockResolvedValue(response)
   vi.mocked(libraryApi.listLibrary).mockResolvedValue([])
   await router.push(path)
@@ -39,7 +39,7 @@ describe('InventoryEditionManagementView', () => {
     const inputs = wrapper.findAll('input')
     await inputs[1].setValue(''); await inputs[2].setValue(''); await inputs[3].setValue(''); await inputs[4].setValue('')
     await wrapper.get('form').trigger('submit'); await flushPromises()
-    expect(catalogApi.updateEdition).toHaveBeenCalledWith(2, 4, { display_name: 'Special Edition', media_format: null, release_date: null, publisher: null, regions: [], languages: [] })
+    expect(catalogApi.updateEdition).toHaveBeenCalledWith(2, 4, { display_name: 'Special Edition', media_format: null, release_date: null, publisher: null, regions: ['B'], languages: [] })
     expect(router.currentRoute.value.name).toBe('inventory-title')
   })
   it('creates an edition from its dedicated route and supports cancel', async () => {
@@ -80,6 +80,25 @@ describe('InventoryEditionManagementView', () => {
     expect((wrapper.get('#edition-format').element as HTMLSelectElement).value).toBe('')
     expect(wrapper.find('#edition-name-custom').exists()).toBe(false)
     expect(wrapper.find('#edition-format-custom').exists()).toBe(false)
+  })
+  it('hides movie metadata for non-movie collections without overwriting stored values', async () => {
+    vi.mocked(catalogApi.updateEdition).mockResolvedValue(edition)
+    const wrapper = await view(undefined, 'editor', detail, 'board_games')
+    expect(wrapper.text()).not.toContain('Movie metadata')
+    expect(wrapper.text()).not.toContain('Publisher / distributor')
+    expect(wrapper.find('#regions-custom').exists()).toBe(false)
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(catalogApi.updateEdition).toHaveBeenCalledWith(2, 4, { display_name: 'Special Edition', release_date: '2003-01-01' })
+  })
+  it('keeps existing regions and asks for review when an edited media format changes', async () => {
+    const dvd = { ...edition, media_format: 'DVD', regions: ['Region 2'], languages: ['German', 'Latin'], publisher: 'Custom distributor' }
+    vi.mocked(catalogApi.updateEdition).mockResolvedValue(dvd)
+    const wrapper = await view(undefined, 'editor', { ...detail, editions: [dvd] })
+    await wrapper.get('#edition-format').setValue('Blu-ray')
+    expect(wrapper.get('[aria-label="Remove Region 2"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Review regions after changing media format')
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(catalogApi.updateEdition).toHaveBeenCalledWith(2, 4, expect.objectContaining({ media_format: 'Blu-ray', regions: ['Region 2'], languages: ['German', 'Latin'], publisher: 'Custom distributor' }))
   })
   it('manages barcodes and IDs with duplicate feedback and confirmed deletion', async () => {
     const wrapper = await view()

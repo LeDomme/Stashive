@@ -7,7 +7,8 @@ import { useCatalogStore } from "@/stores/catalog";
 import { useCollectionsStore } from "@/stores/collections";
 import { useLibraryStore } from "@/stores/library";
 import PresetCustomField from "@/components/PresetCustomField.vue";
-import { EDITION_PRESETS, MEDIA_FORMAT_PRESETS } from "@/constants/inventoryPresets";
+import MultiPresetCustomField from "@/components/MultiPresetCustomField.vue";
+import { EDITION_PRESETS, LANGUAGE_PRESETS, MEDIA_FORMAT_PRESETS, PUBLISHER_PRESETS, REGION_PRESETS_BY_MEDIA_FORMAT } from "@/constants/inventoryPresets";
 
 const route = useRoute();
 const router = useRouter();
@@ -20,13 +21,15 @@ const busy = ref(false);
 const confirmingDelete = ref(false);
 const confirmingIdentifier = ref<number | null>(null);
 const addingIdentifier = ref(false);
-const form = ref({ display_name: "", media_format: "", release_date: "", publisher: "", regions: [] as string[], languages: [] as string[], region: "", language: "" });
+const form = ref({ display_name: "", media_format: "", release_date: "", publisher: "", regions: [] as string[], languages: [] as string[] });
 const identifierForm = ref({ type: "", value: "", source: "" });
 const collectionId = computed(() => Number(route.params.collectionId));
 const entryId = computed(() => Number(route.params.catalogEntryId));
 const editionId = computed(() => route.params.editionId ? Number(route.params.editionId) : null);
 const isNew = computed(() => editionId.value === null);
 const canEdit = computed(() => ["owner", "admin", "editor"].includes(collections.collection?.role ?? ""));
+const isMovieCollection = computed(() => collections.collection?.type === "movies");
+const regionPresets = computed(() => REGION_PRESETS_BY_MEDIA_FORMAT[form.value.media_format] ?? []);
 const title = computed(() => library.title?.catalog_entry ?? null);
 const edition = computed(() => library.title?.editions.find((item) => item.id === editionId.value) ?? null);
 const identifiers = computed(() => edition.value?.identifiers ?? []);
@@ -48,16 +51,23 @@ async function load() {
   if (!canEdit.value) return;
   await library.loadDetail(collectionId.value, entryId.value);
   if (!isNew.value && !edition.value) { error.value = "This edition is not available."; return; }
-  if (edition.value) form.value = { display_name: edition.value.display_name, media_format: edition.value.media_format ?? "", release_date: edition.value.release_date ?? "", publisher: edition.value.publisher ?? "", regions: edition.value.regions, languages: edition.value.languages, region: edition.value.regions[0] ?? "", language: edition.value.languages[0] ?? "" };
-  else form.value = { display_name: "", media_format: "", release_date: "", publisher: "", regions: [], languages: [], region: "", language: "" };
+  if (edition.value) form.value = { display_name: edition.value.display_name, media_format: edition.value.media_format ?? "", release_date: edition.value.release_date ?? "", publisher: edition.value.publisher ?? "", regions: edition.value.regions, languages: edition.value.languages };
+  else form.value = { display_name: "", media_format: "", release_date: "", publisher: "", regions: [], languages: [] };
 }
 async function refreshLibrary() {
   await Promise.all([library.loadDetail(collectionId.value, entryId.value), library.load(collectionId.value)]);
 }
 function editionPayload() {
-  return { display_name: form.value.display_name.trim(), media_format: form.value.media_format.trim() || null, release_date: form.value.release_date || null, publisher: form.value.publisher.trim() || null, regions: replaceFirstValue(form.value.regions, form.value.region), languages: replaceFirstValue(form.value.languages, form.value.language) };
+  const generic = { display_name: form.value.display_name.trim(), release_date: form.value.release_date || null };
+  if (!isMovieCollection.value) return generic;
+  return { ...generic, media_format: form.value.media_format.trim() || null, publisher: form.value.publisher.trim() || null, regions: form.value.regions, languages: form.value.languages };
 }
-function replaceFirstValue(values: string[], value: string) { const normalized = value.trim(); return normalized ? [normalized, ...values.slice(1)] : values.slice(1); }
+watch(() => form.value.media_format, (format, previous) => {
+  if (!isNew.value || !previous || format === previous) return;
+  const previousPresets = REGION_PRESETS_BY_MEDIA_FORMAT[previous] ?? [];
+  const currentPresets = new Set(REGION_PRESETS_BY_MEDIA_FORMAT[format] ?? []);
+  form.value.regions = form.value.regions.filter((region) => !previousPresets.includes(region) || currentPresets.has(region));
+});
 async function save() {
   if (!form.value.display_name.trim()) { error.value = "Edition name is required."; return; }
   busy.value = true;
@@ -111,11 +121,18 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId, route.param
         <form v-if="section === 'general'" class="collection-form" @submit.prevent="save">
           <h1>{{ isNew ? "Add edition" : "Edition general" }}</h1>
           <PresetCustomField id="edition-name" v-model="form.display_name" label="Edition" :presets="EDITION_PRESETS" allow-empty empty-value="" />
-          <PresetCustomField id="edition-format" v-model="form.media_format" label="Media format" :presets="MEDIA_FORMAT_PRESETS" allow-empty empty-value="" />
           <label>Release date <span class="optional">optional</span><input v-model="form.release_date" type="date" /></label>
-          <label>Publisher <span class="optional">optional</span><input v-model="form.publisher" /></label>
-          <label>Region <span class="optional">optional</span><input v-model="form.region" /></label>
-          <label>Language <span class="optional">optional</span><input v-model="form.language" /></label>
+          <section v-if="isMovieCollection" class="form-field-group">
+            <p class="form-field-group__heading">Movie metadata</p>
+            <PresetCustomField id="edition-format" v-model="form.media_format" label="Media format" :presets="MEDIA_FORMAT_PRESETS" allow-empty empty-value="" />
+            <PresetCustomField id="publisher" v-model="form.publisher" label="Publisher / distributor" :presets="PUBLISHER_PRESETS" allow-empty empty-value="" />
+            <template v-if="form.media_format">
+              <MultiPresetCustomField id="regions" v-model="form.regions" label="Regions" :presets="regionPresets" />
+            </template>
+            <p v-else class="field-hint">Choose a media format to select regions.</p>
+            <MultiPresetCustomField id="languages" v-model="form.languages" label="Languages" :presets="LANGUAGE_PRESETS" />
+            <p v-if="!isNew && form.media_format !== edition?.media_format" class="field-hint">Review regions after changing media format.</p>
+          </section>
           <div class="action-row"><button :disabled="busy">{{ busy ? "Saving…" : isNew ? "Create edition" : "Save edition" }}</button><RouterLink class="button-secondary button-link" :to="detailRoute()">Cancel</RouterLink></div>
         </form>
         <section v-else-if="section === 'identifiers'" class="identifier-management">

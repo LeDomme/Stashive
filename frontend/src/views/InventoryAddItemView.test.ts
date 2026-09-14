@@ -9,7 +9,7 @@ import InventoryAddItemView from './InventoryAddItemView.vue'
 vi.mock('@/api/collections'); vi.mock('@/api/library'); vi.mock('@/api/locations')
 const router=createRouter({history:createMemoryHistory(),routes:[{path:'/collections/:collectionId/inventory/add',name:'inventory-add',component:InventoryAddItemView},{path:'/collections/:collectionId/inventory',name:'inventory',component:InventoryAddItemView},{path:'/collections/:collectionId/inventory/:catalogEntryId',name:'inventory-title',component:InventoryAddItemView}]})
 const title={id:2,collection_id:1,display_title:'Alien',type:'movies',sort_title:null,notes:null}; const detail={catalog_entry:title,editions:[{id:3,catalog_entry_id:2,display_name:'Special Edition',media_format:'Blu-ray',release_date:null,publisher:null,regions:[],languages:[],identifiers:[],copies:[]}]}
-async function view(role:'owner'|'editor'|'viewer'='editor'){vi.mocked(collectionsApi.getCollection).mockResolvedValue({...title,name:'Films',role,owner:{id:1,username:'owner',display_name:null}});vi.mocked(locationsApi.listLocationTree).mockResolvedValue([{id:7,collection_id:1,parent_id:null,name:'House',type:'room',description:null,children:[{id:8,collection_id:1,parent_id:7,name:'Shelf',type:'shelf',description:null,children:[]}]}]);vi.mocked(libraryApi.searchTitles).mockResolvedValue([{id:2,catalog_entry_id:2,display_title:'Alien',sort_title:null,type:'movies',edition_count:1,copy_count:0,media_formats:['Blu-ray']}]);vi.mocked(libraryApi.getLibraryTitle).mockResolvedValue(detail);await router.push('/collections/1/inventory/add');const w=mount(InventoryAddItemView,{global:{plugins:[createPinia(),router]}});await flushPromises();return w}
+async function view(role:'owner'|'editor'|'viewer'='editor', collectionType = 'movies'){vi.mocked(collectionsApi.getCollection).mockResolvedValue({...title,name:'Films',type:collectionType,role,owner:{id:1,username:'owner',display_name:null}});vi.mocked(locationsApi.listLocationTree).mockResolvedValue([{id:7,collection_id:1,parent_id:null,name:'House',type:'room',description:null,children:[{id:8,collection_id:1,parent_id:7,name:'Shelf',type:'shelf',description:null,children:[]}]}]);vi.mocked(libraryApi.searchTitles).mockResolvedValue([{id:2,catalog_entry_id:2,display_title:'Alien',sort_title:null,type:'movies',edition_count:1,copy_count:0,media_formats:['Blu-ray']}]);vi.mocked(libraryApi.getLibraryTitle).mockResolvedValue(detail);await router.push('/collections/1/inventory/add');const w=mount(InventoryAddItemView,{global:{plugins:[createPinia(),router]}});await flushPromises();return w}
 const button = (wrapper: ReturnType<typeof mount>, label: string) => wrapper.findAll('button').find((candidate) => candidate.text() === label)!
 async function createTitle(wrapper: ReturnType<typeof mount>, name = 'Arrival') {
   await wrapper.get('input').setValue(name)
@@ -49,13 +49,55 @@ describe('InventoryAddItemView',()=>{it('keeps viewers read-only and starts prog
     await button(wrapper, 'Create new edition').trigger('click')
     await wrapper.get('#edition').setValue('__custom__'); await wrapper.get('#edition-custom').setValue('40th Anniversary Edition')
     await wrapper.get('#media-format').setValue('__custom__'); await wrapper.get('#media-format-custom').setValue('Video CD')
+    await wrapper.get('#publisher').setValue('__custom__'); await wrapper.get('#publisher-custom').setValue('Custom distributor')
     await wrapper.get('#condition').setValue('__custom__'); await wrapper.get('#condition-custom').setValue('Like new')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(libraryApi.addItem).toHaveBeenCalledWith(1, expect.objectContaining({
       title: { existing_id: 2, new: null },
-      edition: expect.objectContaining({ existing_id: null, new: expect.objectContaining({ display_name: '40th Anniversary Edition', media_format: 'Video CD' }) }),
+      edition: expect.objectContaining({ existing_id: null, new: expect.objectContaining({ display_name: '40th Anniversary Edition', media_format: 'Video CD', publisher: 'Custom distributor' }) }),
       copy: { condition: 'Like new', notes: null, location_id: null },
+    }))
+  })
+  it('submits movie metadata presets, multiple values, a custom language, and Sealed', async () => {
+    vi.mocked(libraryApi.addItem).mockResolvedValue({ catalog_entry_id: 12, edition_id: 13, inventory_item_id: 14 })
+    const wrapper = await view()
+    await createTitle(wrapper)
+    await wrapper.get('#edition').setValue('Steelbook')
+    await wrapper.get('#media-format').setValue('Blu-ray')
+    await wrapper.get('#publisher').setValue('Warner Bros. Home Entertainment')
+    const choices = wrapper.findAll('input[type="checkbox"]')
+    await choices[0].setValue(true); await choices[1].setValue(true)
+    await choices[4].setValue(true); await choices[5].setValue(true)
+    await wrapper.get('#languages-custom').setValue('Klingon')
+    await wrapper.findAll('.multi-preset-field__custom button')[1].trigger('click')
+    await flushPromises()
+    await wrapper.get('#condition').setValue('Sealed')
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(libraryApi.addItem).toHaveBeenCalledWith(1, expect.objectContaining({
+      edition: expect.objectContaining({ new: expect.objectContaining({ publisher: 'Warner Bros. Home Entertainment', regions: ['Region A', 'Region B'], languages: ['German', 'English', 'Klingon'] }) }),
+      copy: { condition: 'Sealed', notes: null, location_id: null },
+    }))
+  })
+  it('does not show movie metadata controls for board game collections', async () => {
+    const wrapper = await view('editor', 'board_games')
+    await createTitle(wrapper)
+    expect(wrapper.text()).not.toContain('Movie metadata')
+    expect(wrapper.find('#media-format').exists()).toBe(false)
+    expect(wrapper.find('#publisher').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Languages')
+  })
+  it('clears incompatible create-flow region presets after a media format change', async () => {
+    vi.mocked(libraryApi.addItem).mockResolvedValue({ catalog_entry_id: 12, edition_id: 13, inventory_item_id: 14 })
+    const wrapper = await view()
+    await createTitle(wrapper)
+    await wrapper.get('#edition').setValue('Steelbook')
+    await wrapper.get('#media-format').setValue('DVD')
+    await wrapper.findAll('input[type="checkbox"]')[2].setValue(true)
+    await wrapper.get('#media-format').setValue('Blu-ray')
+    await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(libraryApi.addItem).toHaveBeenCalledWith(1, expect.objectContaining({
+      edition: expect.objectContaining({ new: expect.objectContaining({ media_format: 'Blu-ray', regions: [] }) }),
     }))
   })
   it('submits only the selected existing edition and copy details', async () => {
