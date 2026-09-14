@@ -79,6 +79,7 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
             <h2>{{ edition.display_name || "Standard Edition" }}</h2>
             <div class="edition-detail-card__actions">
               <span v-if="edition.media_format" class="edition-format-badge">{{ edition.media_format }}</span>
+              <RouterLink v-if="canEdit" class="button-secondary button-compact button-link" :to="{ name: 'inventory-copy-new', params: { collectionId, catalogEntryId: entryId, editionId: edition.id } }">Add physical copy</RouterLink>
               <RouterLink v-if="canEdit" class="button-secondary button-compact button-link" :to="{ name: 'inventory-edition-edit', params: { collectionId, catalogEntryId: entryId, editionId: edition.id } }">Edit edition</RouterLink>
             </div>
           </header>
@@ -98,13 +99,8 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
             <p v-if="!edition.copies.length" class="state-message">No physical copies.</p>
             <ol v-else class="copy-read-list">
               <li v-for="(copy, index) in copiesFor(edition.copies)" :key="copy.id" class="copy-read-card">
-                <h4>Copy {{ index + 1 }}</h4>
-                <dl>
-                  <div><dt>Location</dt><dd>{{ locationPath(copy) }}</dd></div>
-                  <div v-if="copy.condition"><dt>Condition</dt><dd>{{ copy.condition }}</dd></div>
-                  <div v-if="copy.notes"><dt>Notes</dt><dd>{{ copy.notes }}</dd></div>
-                </dl>
-                <RouterLink v-if="canEdit" class="button-secondary button-compact button-link copy-read-card__action" :to="{ name: 'inventory-copy-edit', params: { collectionId, catalogEntryId: entryId, editionId: edition.id, inventoryItemId: copy.id } }">Edit copy</RouterLink>
+                <strong>Copy {{ index + 1 }}</strong><span class="copy-read-card__location">{{ locationPath(copy) }}</span><span v-if="copy.condition">{{ copy.condition }}</span><span v-if="copy.notes" class="copy-read-card__notes">{{ copy.notes }}</span>
+                <RouterLink v-if="canEdit" class="button-secondary button-compact button-link" :to="{ name: 'inventory-copy-edit', params: { collectionId, catalogEntryId: entryId, editionId: edition.id, inventoryItemId: copy.id } }">Edit copy</RouterLink>
               </li>
             </ol>
           </section>

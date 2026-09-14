@@ -42,14 +42,19 @@ describe('InventoryEditionManagementView', () => {
     expect(catalogApi.updateEdition).toHaveBeenCalledWith(2, 4, { display_name: 'Special Edition', media_format: null, release_date: null, publisher: null, regions: ['B'], languages: [] })
     expect(router.currentRoute.value.name).toBe('inventory-title')
   })
-  it('creates an edition from its dedicated route and supports cancel', async () => {
-    vi.mocked(catalogApi.createEdition).mockResolvedValue({ ...edition, id: 9 })
+  it('adds an edition and its first copy through the transactional add-item flow', async () => {
+    vi.mocked(libraryApi.addItem).mockResolvedValue({ catalog_entry_id: 3, edition_id: 9, inventory_item_id: 10 })
     const wrapper = await view('/collections/2/inventory/3/editions/new')
     await wrapper.findAll('select')[0].setValue('__custom__')
     await wrapper.get('input').setValue('New edition')
-    await wrapper.findAll('select')[1].setValue('DVD')
+    await wrapper.findAll('select')[1].setValue('Blu-ray')
+    await wrapper.findAll('select')[2].setValue('Warner Bros. Home Entertainment')
+    const choices = wrapper.findAll('input[type="checkbox"]')
+    await choices[1].setValue(true); await choices[4].setValue(true); await choices[5].setValue(true)
+    await wrapper.findAll('select')[3].setValue('Sealed')
+    await wrapper.get('textarea').setValue('First copy')
     await wrapper.get('form').trigger('submit'); await flushPromises()
-    expect(catalogApi.createEdition).toHaveBeenCalledWith(2, 3, expect.objectContaining({ display_name: 'New edition', media_format: 'DVD' }))
+    expect(libraryApi.addItem).toHaveBeenCalledWith(2, expect.objectContaining({ title: { existing_id: 3, new: null }, edition: expect.objectContaining({ existing_id: null, new: expect.objectContaining({ display_name: 'New edition', media_format: 'Blu-ray', publisher: 'Warner Bros. Home Entertainment', regions: ['Region B'], languages: ['German', 'English'] }) }), copy: { condition: 'Sealed', notes: 'First copy', location_id: null } }))
     expect(router.currentRoute.value.name).toBe('inventory-title')
   })
   it('shows known preset values without custom inputs and preserves them on save', async () => {

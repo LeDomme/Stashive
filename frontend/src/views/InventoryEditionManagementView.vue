@@ -3,25 +3,30 @@ import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ApiError } from "@/api/client";
 import type { Identifier } from "@/api/catalog";
+import type { LocationTreeNode } from "@/api/locations";
 import { useCatalogStore } from "@/stores/catalog";
 import { useCollectionsStore } from "@/stores/collections";
 import { useLibraryStore } from "@/stores/library";
+import { useLocationsStore } from "@/stores/locations";
 import PresetCustomField from "@/components/PresetCustomField.vue";
 import MultiPresetCustomField from "@/components/MultiPresetCustomField.vue";
-import { EDITION_PRESETS, LANGUAGE_PRESETS, MEDIA_FORMAT_PRESETS, PUBLISHER_PRESETS, REGION_PRESETS_BY_MEDIA_FORMAT } from "@/constants/inventoryPresets";
+import { CONDITION_PRESETS, EDITION_PRESETS, LANGUAGE_PRESETS, MEDIA_FORMAT_PRESETS, PUBLISHER_PRESETS, REGION_PRESETS_BY_MEDIA_FORMAT } from "@/constants/inventoryPresets";
 
 const route = useRoute();
 const router = useRouter();
 const collections = useCollectionsStore();
 const catalog = useCatalogStore();
 const library = useLibraryStore();
+const locations = useLocationsStore();
 const section = ref<"general" | "identifiers" | "danger">("general");
 const error = ref("");
 const busy = ref(false);
+const ready = ref(false);
 const confirmingDelete = ref(false);
 const confirmingIdentifier = ref<number | null>(null);
 const addingIdentifier = ref(false);
 const form = ref({ display_name: "", media_format: "", release_date: "", publisher: "", regions: [] as string[], languages: [] as string[] });
+const copy = ref({ condition: "", notes: "", location_id: "" });
 const identifierForm = ref({ type: "", value: "", source: "" });
 const collectionId = computed(() => Number(route.params.collectionId));
 const entryId = computed(() => Number(route.params.catalogEntryId));
@@ -30,11 +35,18 @@ const isNew = computed(() => editionId.value === null);
 const canEdit = computed(() => ["owner", "admin", "editor"].includes(collections.collection?.role ?? ""));
 const isMovieCollection = computed(() => collections.collection?.type === "movies");
 const regionPresets = computed(() => REGION_PRESETS_BY_MEDIA_FORMAT[form.value.media_format] ?? []);
+const locationOptions = computed(() => flatten(locations.tree));
 const title = computed(() => library.title?.catalog_entry ?? null);
 const edition = computed(() => library.title?.editions.find((item) => item.id === editionId.value) ?? null);
 const identifiers = computed(() => edition.value?.identifiers ?? []);
 
 function detailRoute() { return { name: "inventory-title", params: { collectionId: collectionId.value, catalogEntryId: entryId.value } }; }
+function flatten(nodes: LocationTreeNode[], prefix = ""): { id: number; path: string }[] {
+  return nodes.flatMap((node) => {
+    const path = prefix ? `${prefix} > ${node.name}` : node.name;
+    return [{ id: node.id, path }, ...flatten(node.children, path)];
+  });
+}
 function message(cause: unknown, identifier = false) {
   if (cause instanceof ApiError) {
     if (cause.status === 403) return "You do not have permission for this action.";
@@ -47,12 +59,14 @@ function message(cause: unknown, identifier = false) {
 function resetIdentifierForm() { identifierForm.value = { type: "", value: "", source: "" }; }
 async function load() {
   error.value = "";
+  ready.value = false;
   await collections.loadCollection(collectionId.value);
   if (!canEdit.value) return;
-  await library.loadDetail(collectionId.value, entryId.value);
+  await Promise.all([library.loadDetail(collectionId.value, entryId.value), locations.loadTree(collectionId.value)]);
   if (!isNew.value && !edition.value) { error.value = "This edition is not available."; return; }
   if (edition.value) form.value = { display_name: edition.value.display_name, media_format: edition.value.media_format ?? "", release_date: edition.value.release_date ?? "", publisher: edition.value.publisher ?? "", regions: edition.value.regions, languages: edition.value.languages };
   else form.value = { display_name: "", media_format: "", release_date: "", publisher: "", regions: [], languages: [] };
+  ready.value = true;
 }
 async function refreshLibrary() {
   await Promise.all([library.loadDetail(collectionId.value, entryId.value), library.load(collectionId.value)]);
@@ -61,6 +75,16 @@ function editionPayload() {
   const generic = { display_name: form.value.display_name.trim(), release_date: form.value.release_date || null };
   if (!isMovieCollection.value) return generic;
   return { ...generic, media_format: form.value.media_format.trim() || null, publisher: form.value.publisher.trim() || null, regions: form.value.regions, languages: form.value.languages };
+}
+function addItemEditionPayload() {
+  return {
+    display_name: form.value.display_name.trim(),
+    media_format: isMovieCollection.value ? form.value.media_format.trim() || null : null,
+    release_date: form.value.release_date || null,
+    publisher: isMovieCollection.value ? form.value.publisher.trim() || null : null,
+    regions: isMovieCollection.value ? form.value.regions : [],
+    languages: isMovieCollection.value ? form.value.languages : [],
+  };
 }
 watch(() => form.value.media_format, (format, previous) => {
   if (!isNew.value || !previous || format === previous) return;
@@ -72,7 +96,11 @@ async function save() {
   if (!form.value.display_name.trim()) { error.value = "Edition name is required."; return; }
   busy.value = true;
   try {
-    if (isNew.value) await catalog.createEdition(collectionId.value, entryId.value, editionPayload());
+    if (isNew.value) await library.addItem(collectionId.value, {
+      title: { existing_id: entryId.value, new: null },
+      edition: { existing_id: null, new: addItemEditionPayload() },
+      copy: { condition: copy.value.condition || null, notes: copy.value.notes || null, location_id: Number(copy.value.location_id) || null },
+    });
     else await catalog.updateEdition(collectionId.value, editionId.value!, editionPayload());
     await refreshLibrary();
     await router.push(detailRoute());
@@ -109,7 +137,7 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId, route.param
   <section class="page-content workspace-content">
     <RouterLink class="back-link" :to="detailRoute()">← Back to title</RouterLink>
     <p v-if="!canEdit && collections.collection" class="form-error" role="alert">You do not have permission to manage this edition.</p>
-    <div v-else-if="title && (isNew || edition)" class="management-layout inventory-management">
+    <div v-else-if="title && (isNew || edition) && ready" class="management-layout inventory-management">
       <nav class="management-sidebar panel" aria-label="Edition management sections">
         <h2>{{ isNew ? "New edition" : "Manage edition" }}</h2>
         <button class="button-ghost" :class="{ 'is-active': section === 'general' }" @click="section = 'general'">General</button>
@@ -133,7 +161,13 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId, route.param
             <MultiPresetCustomField id="languages" v-model="form.languages" label="Languages" :presets="LANGUAGE_PRESETS" />
             <p v-if="!isNew && form.media_format !== edition?.media_format" class="field-hint">Review regions after changing media format.</p>
           </section>
-          <div class="action-row"><button :disabled="busy">{{ busy ? "Saving…" : isNew ? "Create edition" : "Save edition" }}</button><RouterLink class="button-secondary button-link" :to="detailRoute()">Cancel</RouterLink></div>
+          <section v-if="isNew" class="form-field-group">
+            <p class="eyebrow">Physical copy</p>
+            <PresetCustomField id="copy-condition" v-model="copy.condition" label="Condition" :presets="CONDITION_PRESETS" allow-empty empty-value="" />
+            <label>Location <span class="optional">optional</span><select v-model="copy.location_id"><option value="">Unassigned</option><option v-for="location in locationOptions" :key="location.id" :value="String(location.id)">{{ location.path }}</option></select></label>
+            <label>Notes <span class="optional">optional</span><textarea v-model="copy.notes" /></label>
+          </section>
+          <div class="action-row"><button :disabled="busy">{{ busy ? "Saving…" : isNew ? "Add edition & copy" : "Save edition" }}</button><RouterLink class="button-secondary button-link" :to="detailRoute()">Cancel</RouterLink></div>
         </form>
         <section v-else-if="section === 'identifiers'" class="identifier-management">
           <h1>Barcodes &amp; IDs</h1>

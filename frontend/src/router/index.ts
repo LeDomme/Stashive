@@ -13,6 +13,7 @@ import InventoryTitlePlaceholderView from '@/views/InventoryTitlePlaceholderView
 import InventoryTitleManagementView from '@/views/InventoryTitleManagementView.vue'
 import InventoryEditionManagementView from '@/views/InventoryEditionManagementView.vue'
 import InventoryCopyManagementView from '@/views/InventoryCopyManagementView.vue'
+import InventoryAddCopyView from '@/views/InventoryAddCopyView.vue'
 import SetupView from '@/views/SetupView.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -38,6 +39,7 @@ const router = createRouter({
     { path: '/collections/:collectionId/inventory/:catalogEntryId/edit', name: 'inventory-title-edit', component: InventoryTitleManagementView },
     { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/new', name: 'inventory-edition-new', component: InventoryEditionManagementView },
     { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/:editionId/edit', name: 'inventory-edition-edit', component: InventoryEditionManagementView },
+    { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/:editionId/copies/new', name: 'inventory-copy-new', component: InventoryAddCopyView },
     { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/:editionId/copies/:inventoryItemId/edit', name: 'inventory-copy-edit', component: InventoryCopyManagementView },
     { path: '/collections/:collectionId/inventory/:catalogEntryId', name: 'inventory-title', component: InventoryTitlePlaceholderView },
     { path: '/collections/:collectionId/settings', name: 'collection-settings', component: CollectionSettingsView },
