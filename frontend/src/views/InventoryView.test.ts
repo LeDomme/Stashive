@@ -50,9 +50,11 @@ describe('InventoryView', () => {
     expect(wrapper.get('.library-card__cover').text()).toBe('Stashive')
     expect(wrapper.find('.inventory-list').exists()).toBe(false)
   })
-  it('uses the consistent three-item primary collection subnavigation', async () => {
+  it('uses the primary collection subnavigation with a right-aligned Add item action', async () => {
     const wrapper = await view()
-    expect(wrapper.get('[aria-label="Collection navigation"]').findAll('a').map((link) => link.text())).toEqual(['Inventory', 'Locations', 'Settings'])
+    const navigation = wrapper.get('[aria-label="Collection navigation"]')
+    expect(navigation.find('.collection-nav__links').findAll('a').map((link) => link.text())).toEqual(['Inventory', 'Locations', 'Settings'])
+    expect(navigation.get('.collection-nav__action').text()).toBe('Add item')
   })
   it('renders singular result and card counts', async () => {
     const wrapper = await view('viewer', [{ ...titles[0], edition_count: 1, copy_count: 1, media_formats: [] }])
@@ -72,13 +74,13 @@ describe('InventoryView', () => {
   })
   it('routes Add item to the guided inventory flow', async () => {
     const wrapper = await view()
-    await wrapper.find('a.button-link').trigger('click')
+    await wrapper.get('.collection-nav__action').trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.name).toBe('inventory-add')
   })
   it('shows role-aware empty states', async () => {
     expect((await view('owner', [])).text()).toContain('No titles yet')
-    expect(button(await view('owner', []), 'Add item')).toBeDefined()
+    expect((await view('owner', [])).get('.collection-nav__action').text()).toBe('Add item')
     expect(button(await view('viewer', []), 'Add item')).toBeUndefined()
   })
   it('sends all, unassigned, recursive and exact filters to the library read model', async () => {

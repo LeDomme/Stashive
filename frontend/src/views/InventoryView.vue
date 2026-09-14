@@ -62,12 +62,14 @@ watch(() => route.params.collectionId, load, { immediate: true });
     <template v-if="collections.collection">
       <div class="page-heading">
         <div><p class="eyebrow">{{ collections.collection.name }}</p><h1>Inventory</h1></div>
-        <RouterLink v-if="canEdit && library.titles.length" class="button-link" :to="{name:'inventory-add',params:{collectionId:id}}">Add item</RouterLink>
       </div>
       <nav class="collection-nav" aria-label="Collection navigation">
-        <RouterLink :to="{ name: 'inventory', params: { collectionId: id } }">Inventory</RouterLink>
-        <RouterLink :to="{ name: 'locations', params: { collectionId: id } }">Locations</RouterLink>
-        <RouterLink :to="{ name: 'collection-settings', params: { collectionId: id } }">Settings</RouterLink>
+        <div class="collection-nav__links">
+          <RouterLink :to="{ name: 'inventory', params: { collectionId: id } }">Inventory</RouterLink>
+          <RouterLink :to="{ name: 'locations', params: { collectionId: id } }">Locations</RouterLink>
+          <RouterLink :to="{ name: 'collection-settings', params: { collectionId: id } }">Settings</RouterLink>
+        </div>
+        <RouterLink v-if="canEdit" class="collection-nav__action" :to="{name:'inventory-add',params:{collectionId:id}}">Add item</RouterLink>
       </nav>
       <section class="filter-toolbar panel">
         <form class="filter-toolbar__controls" @submit.prevent="load">
@@ -81,8 +83,7 @@ watch(() => route.params.collectionId, load, { immediate: true });
       <p v-if="error" class="form-error" role="alert">{{ error }}</p>
       <div v-if="!library.titles.length" class="empty-state">
         <h2>{{ filter === 'all' ? 'No titles yet' : 'No titles match this filter' }}</h2>
-        <p>{{ canEdit ? 'Add an item once an edition is available.' : 'This collection has no matching titles.' }}</p>
-        <RouterLink v-if="canEdit" class="button-link" :to="{name:'inventory-add',params:{collectionId:id}}">Add item</RouterLink>
+        <p>{{ canEdit ? 'Use Add item above to create your first title, edition and physical copy.' : 'This collection has no matching titles.' }}</p>
       </div>
       <ul v-else class="library-grid" aria-label="Inventory titles">
         <li v-for="title in library.titles" :key="title.catalog_entry_id" class="library-card">

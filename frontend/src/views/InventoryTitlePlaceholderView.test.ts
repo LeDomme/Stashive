@@ -47,7 +47,7 @@ describe('InventoryTitlePlaceholderView', () => {
     expect(wrapper.text()).toContain('Sort title: Alien, The')
     expect(wrapper.text()).toContain('Movie')
     expect(wrapper.text()).toContain('A classic.')
-    expect(wrapper.get('.inventory-title-detail__cover').text()).toBe('Stashive')
+    expect(wrapper.get('.inventory-title-detail__cover').text()).toBe('No cover available')
   })
   it('renders editions, format badges, metadata and barcode details without management controls', async () => {
     const wrapper = await view()

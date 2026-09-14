@@ -747,6 +747,32 @@ h1 {
 .copy-read-card dd { margin: 0; overflow-wrap: anywhere; }
 @media (max-width: 42rem) { .inventory-title-detail__header { grid-template-columns: 1fr; } .inventory-title-detail__cover { min-height: 11rem; } .edition-detail-card__header { align-items: flex-start; flex-direction: column; } }
 
+/* U03d.1: quieter, more compact operational hierarchy. */
+body { font-size: .95rem; line-height: 1.5; }
+h1, h2, h3, h4 { font-weight: 650; letter-spacing: -.025em; }
+h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); }
+h2 { font-size: 1.18rem; }
+h3 { font-size: 1rem; }
+label { font-weight: 600; }
+button, .button-link { min-height: 2.4rem; border-radius: .55rem; font-weight: 650; }
+button { background: #087557; }
+button:hover:not(:disabled) { background: #0b8b67; }
+.button-secondary { color: #d8f5e8; border-color: rgb(111 243 199 / .42); background: rgb(16 230 161 / .07); }
+.button-secondary:hover:not(:disabled) { background: rgb(16 230 161 / .15); }
+.page-heading { margin-bottom: 1rem; }
+.page-heading h1 { margin: 0; }
+.collection-nav { align-items: center; justify-content: space-between; margin-top: 0; }
+.collection-nav__links { display: flex; flex-wrap: wrap; gap: .2rem; }
+.collection-nav a { font-weight: 650; }
+.collection-nav__action { margin-left: auto; color: #042217 !important; background: var(--stashive-mint); box-shadow: 0 .35rem .8rem rgb(0 0 0 / 18%); }
+.collection-nav__action:hover { background: var(--stashive-glow) !important; }
+.inventory-title-detail__cover { place-items: center; color: #9fcfba; font-size: .78rem; font-weight: 650; letter-spacing: .03em; text-transform: none; }
+.inventory-title-detail__actions, .edition-detail-card__actions { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem; }
+.edition-detail-card__actions { justify-content: flex-end; }
+.copy-read-card__action { margin-top: .9rem; }
+.management-panel .collection-form { margin-bottom: 0; }
+@media (max-width: 42rem) { .collection-nav { align-items: stretch; } .collection-nav__links { width: 100%; } .collection-nav__action { margin-left: 0; text-align: center; } .edition-detail-card__actions { justify-content: flex-start; } }
+
 .locations-workspace { display: grid; grid-template-columns: minmax(19rem, .9fr) minmax(0, 1.8fr); gap: 1rem; align-items: start; margin-bottom: 1.25rem; }
 .locations-workspace .management-layout { display: contents; }
 .locations-workspace .management-sidebar { grid-column: 1; grid-row: 1; }

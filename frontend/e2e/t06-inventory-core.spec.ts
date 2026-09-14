@@ -15,7 +15,7 @@ test('generic inventory workflow supports duplicate copies and location states',
 
   await page.goto(`/collections/${collectionId}/inventory`)
   const collectionNavigation = page.getByLabel('Collection navigation')
-  await expect(collectionNavigation.getByRole('link')).toHaveText(['Inventory', 'Locations', 'Settings'])
+  await expect(collectionNavigation.getByRole('link')).toHaveText(['Inventory', 'Locations', 'Settings', 'Add item'])
   await collectionNavigation.getByRole('link', { name: 'Settings' }).click()
   await page.getByRole('button', { name: 'Advanced' }).click()
   await page.getByRole('link', { name: 'Open advanced catalog' }).click()

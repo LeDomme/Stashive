@@ -56,7 +56,7 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
     <p v-if="library.error" class="form-error" role="alert">{{ detailError() }}</p>
     <template v-else-if="library.title">
       <header class="inventory-title-detail__header panel">
-        <div class="inventory-title-detail__cover library-card__cover" aria-hidden="true">Stashive</div>
+        <div class="inventory-title-detail__cover library-card__cover" role="img" aria-label="No cover available">No cover available</div>
         <div class="inventory-title-detail__heading">
           <p v-if="collections.collection" class="eyebrow">{{ collections.collection.name }} · Inventory</p>
           <h1>{{ library.title.catalog_entry.display_title }}</h1>
@@ -74,8 +74,10 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
         <article v-for="edition in library.title.editions" :key="edition.id" class="edition-detail-card panel">
           <header class="edition-detail-card__header">
             <h2>{{ edition.display_name || "Standard Edition" }}</h2>
-            <span v-if="edition.media_format" class="edition-format-badge">{{ edition.media_format }}</span>
-            <RouterLink v-if="canEdit" class="button-secondary button-compact button-link" :to="{ name: 'inventory-edition-edit', params: { collectionId, catalogEntryId: entryId, editionId: edition.id } }">Edit edition</RouterLink>
+            <div class="edition-detail-card__actions">
+              <span v-if="edition.media_format" class="edition-format-badge">{{ edition.media_format }}</span>
+              <RouterLink v-if="canEdit" class="button-secondary button-compact button-link" :to="{ name: 'inventory-edition-edit', params: { collectionId, catalogEntryId: entryId, editionId: edition.id } }">Edit edition</RouterLink>
+            </div>
           </header>
           <div v-if="edition.release_date || edition.region || edition.language || edition.publisher" class="edition-detail-card__metadata">
             <p v-if="edition.release_date || edition.region || edition.language">{{ [edition.release_date, edition.region && `Region ${edition.region}`, edition.language].filter(Boolean).join(" · ") }}</p>
