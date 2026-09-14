@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as DatabaseSession
+from sqlalchemy.orm import selectinload
 
 from app.api.auth import current_user_or_401, current_user_with_csrf_or_403, get_session
 from app.api.collections import collection_or_404
@@ -17,6 +18,8 @@ from app.db.models import (
     User,
 )
 from app.inventory.schemas import (
+    AddItemInput,
+    AddItemResponse,
     CatalogEntryCreateInput,
     CatalogEntryResponse,
     CatalogEntryUpdateInput,
@@ -29,10 +32,33 @@ from app.inventory.schemas import (
     InventoryItemCreate,
     InventoryItemResponse,
     InventoryItemUpdateInput,
+    LibraryTitleDetail,
+    LibraryTitleSearchResult,
+    LibraryTitleSummary,
 )
-from app.inventory.service import DuplicateIdentifierError, InventoryService
+from app.inventory.service import (
+    CatalogEntryNotFoundError,
+    CrossCollectionLocationAssignmentError,
+    DuplicateIdentifierError,
+    EditionNotFoundError,
+    InvalidItemCreationError,
+    InventoryService,
+)
 
 router = APIRouter(prefix="/collections", tags=["inventory"])
+
+
+def edition_response(edition: Edition) -> EditionResponse:
+    return EditionResponse(
+        id=edition.id,
+        catalog_entry_id=edition.catalog_entry_id,
+        display_name=edition.display_name,
+        media_format=edition.media_format,
+        release_date=edition.release_date,
+        publisher=edition.publisher,
+        regions=[region.value for region in edition.regions],
+        languages=[language.value for language in edition.languages],
+    )
 
 
 def editable_collection_or_403(
@@ -121,6 +147,213 @@ def item_in_collection_or_404(
     if item is None:
         raise HTTPException(status_code=404, detail="Inventory item not found")
     return item
+
+
+def validate_inventory_filters(
+    session: DatabaseSession,
+    collection: Collection,
+    *,
+    location_id: int | None,
+    include_descendants: bool,
+    unassigned: bool,
+) -> None:
+    """Apply the shared copy-filter contract used by inventory read models."""
+    if location_id is not None and unassigned:
+        raise HTTPException(status_code=422, detail="location_id and unassigned cannot be combined")
+    if location_id is None and not include_descendants:
+        raise HTTPException(status_code=422, detail="include_descendants requires location_id")
+    if location_id is not None:
+        location_in_collection_or_404(session, collection, location_id)
+
+
+@router.get("/{collection_id}/library", response_model=list[LibraryTitleSummary])
+def list_library(
+    collection_id: int,
+    location_id: int | None = Query(default=None, gt=0),
+    include_descendants: bool = True,
+    unassigned: bool = False,
+    session: DatabaseSession = Depends(get_session),
+    user: User = Depends(current_user_or_401),
+) -> list[LibraryTitleSummary]:
+    """Return a collection-scoped, title-centric read model without N+1 loading."""
+    collection, _ = collection_or_404(session, user, collection_id)
+    validate_inventory_filters(
+        session,
+        collection,
+        location_id=location_id,
+        include_descendants=include_descendants,
+        unassigned=unassigned,
+    )
+    filtered = location_id is not None or unassigned
+    matching_copy_ids = {
+        item.id
+        for item in InventoryService().list_inventory(
+            session,
+            collection_id=collection.id,
+            location_id=location_id,
+            recursive=include_descendants,
+            unassigned=unassigned,
+        )
+    }
+    query = (
+        select(CatalogEntry)
+        .where(CatalogEntry.collection_id == collection.id)
+        .options(selectinload(CatalogEntry.editions).selectinload(Edition.inventory_items))
+        .order_by(
+            func.lower(func.coalesce(CatalogEntry.sort_title, CatalogEntry.display_title)),
+            CatalogEntry.id,
+        )
+    )
+    entries = session.scalars(query).all()
+    summaries: list[LibraryTitleSummary] = []
+    for entry in entries:
+        editions = [
+            edition
+            for edition in entry.editions
+            if not filtered or any(item.id in matching_copy_ids for item in edition.inventory_items)
+        ]
+        copies = [
+            item
+            for edition in editions
+            for item in edition.inventory_items
+            if not filtered or item.id in matching_copy_ids
+        ]
+        if filtered and not copies:
+            continue
+        summaries.append(
+            LibraryTitleSummary(
+                id=entry.id,
+                catalog_entry_id=entry.id,
+                display_title=entry.display_title,
+                sort_title=entry.sort_title,
+                type=entry.type,
+                edition_count=len(editions),
+                copy_count=len(copies),
+                media_formats=sorted(
+                    {edition.media_format for edition in editions if edition.media_format},
+                    key=str.lower,
+                ),
+            )
+        )
+    return summaries
+
+
+@router.get("/{collection_id}/library/{entry_id:int}", response_model=LibraryTitleDetail)
+def get_library_title(
+    collection_id: int,
+    entry_id: int,
+    session: DatabaseSession = Depends(get_session),
+    user: User = Depends(current_user_or_401),
+) -> LibraryTitleDetail:  # noqa: E501
+    """Return one collection-scoped title with its editions, identifiers, and copies."""
+    collection, _ = collection_or_404(session, user, collection_id)
+    entry = session.scalar(
+        select(CatalogEntry)
+        .where(CatalogEntry.id == entry_id, CatalogEntry.collection_id == collection.id)
+        .options(
+            selectinload(CatalogEntry.editions).selectinload(Edition.identifiers),
+            selectinload(CatalogEntry.editions).selectinload(Edition.inventory_items),
+            selectinload(CatalogEntry.editions).selectinload(Edition.regions),
+            selectinload(CatalogEntry.editions).selectinload(Edition.languages),
+        )
+    )  # noqa: E501
+    if entry is None:
+        raise HTTPException(status_code=404, detail="Catalog entry not found")
+    return LibraryTitleDetail(
+        catalog_entry=entry,
+        editions=[
+            {
+                "id": edition.id,
+                "catalog_entry_id": edition.catalog_entry_id,
+                "display_name": edition.display_name,
+                "media_format": edition.media_format,
+                "release_date": edition.release_date,
+                "publisher": edition.publisher,
+                "regions": [region.value for region in edition.regions],
+                "languages": [language.value for language in edition.languages],
+                "identifiers": edition.identifiers,
+                "copies": edition.inventory_items,
+            }
+            for edition in entry.editions
+        ],
+    )  # noqa: E501
+
+
+@router.get("/{collection_id}/library/title-search", response_model=list[LibraryTitleSearchResult])
+def search_library_titles(
+    collection_id: int,
+    q: str = Query(min_length=2, max_length=512),
+    session: DatabaseSession = Depends(get_session),
+    user: User = Depends(current_user_or_401),
+) -> list[LibraryTitleSearchResult]:
+    """Search a visible collection's titles without loading title detail trees."""
+    collection, _ = collection_or_404(session, user, collection_id)
+    needle = f"%{q.lower()}%"
+    entries = session.scalars(
+        select(CatalogEntry)
+        .where(CatalogEntry.collection_id == collection.id)
+        .where(
+            func.lower(CatalogEntry.display_title).like(needle)
+            | func.lower(func.coalesce(CatalogEntry.sort_title, "")).like(needle)
+        )
+        .options(selectinload(CatalogEntry.editions).selectinload(Edition.inventory_items))
+        .limit(20)
+    ).all()
+    return [
+        LibraryTitleSearchResult(
+            id=e.id,
+            catalog_entry_id=e.id,
+            display_title=e.display_title,
+            sort_title=e.sort_title,
+            type=e.type,
+            edition_count=len(e.editions),
+            copy_count=sum(len(x.inventory_items) for x in e.editions),
+            media_formats=sorted(
+                {x.media_format for x in e.editions if x.media_format}, key=str.lower
+            ),
+        )
+        for e in entries
+    ]
+
+
+@router.post(
+    "/{collection_id}/items", response_model=AddItemResponse, status_code=status.HTTP_201_CREATED
+)
+def add_item(
+    collection_id: int,
+    payload: AddItemInput,
+    session: DatabaseSession = Depends(get_session),
+    user: User = Depends(current_user_with_csrf_or_403),
+) -> AddItemResponse:
+    """Create one physical copy and any explicitly requested title or edition atomically."""
+    collection = editable_collection_or_403(session, user, collection_id)
+    try:
+        entry, edition, item = InventoryService().add_item(
+            session,
+            collection_id=collection.id,
+            title_id=payload.title.existing_id,
+            new_title=payload.title.new.model_dump() if payload.title.new else None,
+            edition_id=payload.edition.existing_id,
+            new_edition=payload.edition.new.model_dump() if payload.edition.new else None,
+            condition=payload.copy_data.condition,
+            notes=payload.copy_data.notes,
+            location_id=payload.copy_data.location_id,
+        )
+    except (
+        CatalogEntryNotFoundError,
+        EditionNotFoundError,
+        CrossCollectionLocationAssignmentError,
+    ):
+        raise HTTPException(
+            status_code=404, detail="Requested item relationship was not found"
+        ) from None
+    except InvalidItemCreationError:
+        raise HTTPException(
+            status_code=422, detail="Title and edition choices are incompatible"
+        ) from None
+    return AddItemResponse(
+        catalog_entry_id=entry.id, edition_id=edition.id, inventory_item_id=item.id
+    )
 
 
 @router.get("/{collection_id}/catalog-entries", response_model=list[CatalogEntryResponse])
@@ -226,11 +459,15 @@ def list_editions(
     """List all editions of a title in stable identifier order."""
     collection, _ = collection_or_404(session, user, collection_id)
     entry_in_collection_or_404(session, collection, entry_id)
-    return list(
+    editions = list(
         session.scalars(
-            select(Edition).where(Edition.catalog_entry_id == entry_id).order_by(Edition.id)
+            select(Edition)
+            .where(Edition.catalog_entry_id == entry_id)
+            .options(selectinload(Edition.regions), selectinload(Edition.languages))
+            .order_by(Edition.id)
         )
     )
+    return [edition_response(edition) for edition in editions]
 
 
 @router.post(
@@ -248,15 +485,17 @@ def create_edition(
     """Create an edition beneath a title the caller may edit."""
     collection = editable_collection_or_403(session, user, collection_id)
     entry = entry_in_collection_or_404(session, collection, entry_id)
-    return InventoryService().create_edition(
+    edition = InventoryService().create_edition(
         session,
         catalog_entry_id=entry.id,
         display_name=payload.display_name,
+        media_format=payload.media_format,
         release_date=payload.release_date,
         publisher=payload.publisher,
-        region=payload.region,
-        language=payload.language,
+        regions=payload.regions,
+        languages=payload.languages,
     )
+    return edition_response(edition)
 
 
 @router.get("/{collection_id}/editions/{edition_id}", response_model=EditionResponse)
@@ -268,7 +507,9 @@ def get_edition(
 ) -> Edition:
     """Get one edition without exposing editions from other collections."""
     collection, _ = collection_or_404(session, user, collection_id)
-    return edition_in_collection_or_404(session, collection, edition_id)
+    edition = edition_in_collection_or_404(session, collection, edition_id)
+    session.refresh(edition, attribute_names=["regions", "languages"])
+    return edition_response(edition)
 
 
 @router.patch("/{collection_id}/editions/{edition_id}", response_model=EditionResponse)
@@ -283,15 +524,21 @@ def update_edition(
     collection = editable_collection_or_403(session, user, collection_id)
     edition = edition_in_collection_or_404(session, collection, edition_id)
     fields = payload.model_fields_set
-    return InventoryService().update_edition(
+    updated = InventoryService().update_edition(
         session,
         edition_id=edition.id,
         display_name=payload.display_name if "display_name" in fields else edition.display_name,
+        media_format=payload.media_format if "media_format" in fields else edition.media_format,
         release_date=payload.release_date if "release_date" in fields else edition.release_date,
         publisher=payload.publisher if "publisher" in fields else edition.publisher,
-        region=payload.region if "region" in fields else edition.region,
-        language=payload.language if "language" in fields else edition.language,
+        regions=payload.regions
+        if "regions" in fields
+        else [region.value for region in edition.regions],
+        languages=payload.languages
+        if "languages" in fields
+        else [language.value for language in edition.languages],
     )
+    return edition_response(updated)
 
 
 @router.delete("/{collection_id}/editions/{edition_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -412,12 +659,13 @@ def list_inventory_items(
 ) -> list[InventoryItem]:
     """List copies with an optional scoped location or unassigned filter."""
     collection, _ = collection_or_404(session, user, collection_id)
-    if location_id is not None and unassigned:
-        raise HTTPException(status_code=422, detail="location_id and unassigned cannot be combined")
-    if location_id is None and not include_descendants:
-        raise HTTPException(status_code=422, detail="include_descendants requires location_id")
-    if location_id is not None:
-        location_in_collection_or_404(session, collection, location_id)
+    validate_inventory_filters(
+        session,
+        collection,
+        location_id=location_id,
+        include_descendants=include_descendants,
+        unassigned=unassigned,
+    )
     return InventoryService().list_inventory(
         session,
         collection_id=collection.id,

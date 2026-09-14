@@ -6,7 +6,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session as DatabaseSession
 
-from app.db.models import CatalogEntry, Collection, Edition, Identifier, InventoryItem, Location
+from app.db.models import (
+    CatalogEntry,
+    Collection,
+    Edition,
+    EditionLanguage,
+    EditionRegion,
+    Identifier,
+    InventoryItem,
+    Location,
+)
 
 
 class InventoryDomainError(Exception):
@@ -41,6 +50,10 @@ class CrossCollectionLocationAssignmentError(InventoryDomainError):
     """Raised when a physical copy is assigned to another collection's location."""
 
 
+class InvalidItemCreationError(InventoryDomainError):
+    """Raised when explicit title and edition choices are incompatible."""
+
+
 class DuplicateIdentifierError(InventoryDomainError):
     """Raised when an edition already has an identifier with matching type and value."""
 
@@ -69,6 +82,68 @@ class InventoryService:
         )
         session.add(entry)
         return self._commit_and_refresh(session, entry)
+
+    def add_item(
+        self,
+        session: DatabaseSession,
+        *,
+        collection_id: int,
+        title_id: int | None,
+        new_title: dict[str, object] | None,
+        edition_id: int | None,
+        new_edition: dict[str, object] | None,
+        condition: str | None,
+        notes: str | None,
+        location_id: int | None,
+    ) -> tuple[CatalogEntry, Edition, InventoryItem]:
+        """Atomically create one physical copy using explicit title/edition choices."""
+        try:
+            if title_id is None:
+                if new_title is None or edition_id is not None:
+                    raise InvalidItemCreationError
+                entry = CatalogEntry(collection_id=collection_id, **new_title)
+                session.add(entry)
+                session.flush()
+            else:
+                entry = self._entry(session, title_id)
+                if entry.collection_id != collection_id:
+                    raise CatalogEntryNotFoundError
+            if edition_id is None:
+                if new_edition is None:
+                    raise InvalidItemCreationError
+                edition_data = new_edition.copy()
+                regions = edition_data.pop("regions", [])
+                languages = edition_data.pop("languages", [])
+                edition = Edition(catalog_entry_id=entry.id, **edition_data)
+                edition.regions = [
+                    EditionRegion(value=value, position=index)
+                    for index, value in enumerate(regions)
+                ]
+                edition.languages = [
+                    EditionLanguage(value=value, position=index)
+                    for index, value in enumerate(languages)
+                ]
+                session.add(edition)
+                session.flush()
+            else:
+                if new_edition is not None:
+                    raise InvalidItemCreationError
+                edition = self._edition(session, edition_id)
+                if edition.catalog_entry_id != entry.id:
+                    raise EditionNotFoundError
+            self._validate_location(session, edition, location_id)
+            item = InventoryItem(
+                edition_id=edition.id, condition=condition, notes=notes, location_id=location_id
+            )
+            session.add(item)
+            session.commit()
+            session.refresh(entry)
+            session.refresh(edition)
+            session.refresh(item)
+            return entry, edition, item
+        except Exception:
+            session.rollback()
+            raise
 
     def update_catalog_entry(
         self,
@@ -99,20 +174,28 @@ class InventoryService:
         *,
         catalog_entry_id: int,
         display_name: str,
+        media_format: str | None = None,
         release_date: date | None = None,
         publisher: str | None = None,
-        region: str | None = None,
-        language: str | None = None,
+        regions: list[str] | None = None,
+        languages: list[str] | None = None,
     ) -> Edition:
         """Create a concrete product edition below an existing title."""
         self._entry(session, catalog_entry_id)
         edition = Edition(
             catalog_entry_id=catalog_entry_id,
             display_name=display_name,
+            media_format=media_format,
             release_date=release_date,
             publisher=publisher,
-            region=region,
-            language=language,
+            regions=[
+                EditionRegion(value=value, position=index)
+                for index, value in enumerate(regions or [])
+            ],
+            languages=[
+                EditionLanguage(value=value, position=index)
+                for index, value in enumerate(languages or [])
+            ],
         )
         session.add(edition)
         return self._commit_and_refresh(session, edition)
@@ -123,18 +206,24 @@ class InventoryService:
         *,
         edition_id: int,
         display_name: str,
+        media_format: str | None = None,
         release_date: date | None,
         publisher: str | None,
-        region: str | None,
-        language: str | None,
+        regions: list[str],
+        languages: list[str],
     ) -> Edition:
         """Replace the editable metadata of a concrete product edition."""
         edition = self._edition(session, edition_id)
         edition.display_name = display_name
+        edition.media_format = media_format
         edition.release_date = release_date
         edition.publisher = publisher
-        edition.region = region
-        edition.language = language
+        edition.regions = [
+            EditionRegion(value=value, position=index) for index, value in enumerate(regions)
+        ]
+        edition.languages = [
+            EditionLanguage(value=value, position=index) for index, value in enumerate(languages)
+        ]
         return self._commit_and_refresh(session, edition)
 
     def delete_edition(self, session: DatabaseSession, *, edition_id: int) -> None:

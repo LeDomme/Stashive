@@ -149,6 +149,9 @@ Required:
 - add format, edition, and condition presets while retaining manual values
 - make Catalog an optional supporting view rather than a required preparation workflow
 
+Status: complete. The normal inventory workflow is title-centric, with guided transactional item
+creation, title search without automatic merging, and optional UI presets that keep custom values.
+
 ### U04 — Smarter Location Semantics
 
 - model whether a location may contain child locations, inventory items, or both

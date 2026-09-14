@@ -19,7 +19,7 @@ const router = createRouter({
   ],
 })
 const entry = { id: 2, collection_id: 1, display_title: 'Alien', type: 'movie', sort_title: 'Alien, The', notes: 'Classic' }
-const edition: Edition = { id: 3, catalog_entry_id: 2, display_name: 'Director\'s Cut', release_date: '2024-03-15', publisher: 'Stashive Pictures', region: 'B', language: 'German' }
+const edition: Edition = { id: 3, catalog_entry_id: 2, display_name: 'Director\'s Cut', media_format: null, release_date: '2024-03-15', publisher: 'Stashive Pictures', regions: ['B'], languages: ['German'] }
 const identifier: Identifier = { id: 4, edition_id: 3, type: 'EAN', value: '1234567890123', source: 'Manual' }
 
 async function view(
@@ -170,7 +170,7 @@ describe('CatalogDetailView', () => {
   })
 
   it('sends explicit nulls when optional edition fields are cleared', async () => {
-    vi.mocked(api.updateEdition).mockResolvedValue({ ...edition, release_date: null, publisher: null, region: null, language: null })
+    vi.mocked(api.updateEdition).mockResolvedValue({ ...edition, release_date: null, publisher: null, regions: [], languages: [] })
     const wrapper = await view()
     await button(wrapper, 'Edit edition')?.trigger('click')
     await input(wrapper, 'Release date').setValue('')
@@ -184,8 +184,8 @@ describe('CatalogDetailView', () => {
       display_name: "Director's Cut",
       release_date: null,
       publisher: null,
-      region: null,
-      language: null,
+      regions: [],
+      languages: [],
     })
   })
 

@@ -47,7 +47,7 @@ test.describe.serial('T04 multiuser collection access', () => {
     await page.getByRole('button', { name: 'Create administrator' }).click()
     await expect(page.getByLabel('Open application menu')).toBeVisible()
     await page.goto('/setup')
-    await expect(page.getByRole('heading', { name: 'Collections', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Your collections', exact: true })).toBeVisible()
 
     await page.getByLabel('Open application menu').click()
     await page.getByRole('link', { name: 'Administration' }).click()

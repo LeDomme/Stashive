@@ -32,20 +32,37 @@ New collection
 -> optional members
 ```
 
-## 3. Manual movie entry
+## 3. Inventory and add an item
+
+Collections -> Inventory -> Title -> Editions -> Physical Copies
+
+Inventory is the primary title-centric library. A title detail groups title metadata, editions,
+media format, barcodes and IDs, physical copies, locations, condition, and notes. Management is
+reached from that structure: titles have General and Danger Zone; editions have General, Barcodes
+& IDs, and Danger Zone; physical copies have General, Location, and Danger Zone.
 
 ```text
-Add item
--> search existing title
-   or create title
--> choose/create edition
--> create physical copy
--> location
--> rip state
--> save
+Collections -> Inventory -> Add item
+-> explicitly choose an existing title or create a new title
+-> explicitly choose an existing edition or create a new edition
+-> add physical copy details and optional location
+-> save through one transactional Add Item request
+-> title detail
 ```
 
-Avoid forcing provider lookup for manual entry.
+The normal flow never requires Advanced Catalog and never automatically merges title matches.
+Search can suggest an exact existing title, but the user explicitly chooses Use existing or Create
+new title. Existing/new title and edition choices support all three transactional cases without
+partial writes.
+
+Edition, media format, and condition controls offer optional UI presets. Media formats: DVD,
+Blu-ray, UHD Blu-ray, HD DVD, LaserDisc, VHS. Editions: Standard Edition, Collector's Edition,
+Director's Cut, Extended Edition, Limited Edition, Steelbook, Box Set. Conditions: Mint, Very
+Good, Good, Fair, Poor. Other / Custom keeps arbitrary strings such as Video CD, 40th Anniversary
+Edition, and Sealed; it also preserves unknown stored values.
+
+Advanced Catalog remains a low-level fallback under Settings → Advanced. It is not primary
+collection navigation, while its backend CRUD remains available.
 
 ## Location tree
 

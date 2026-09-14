@@ -19,7 +19,7 @@ const editing = ref(false)
 const editingEdition = ref<number | null>(null)
 const confirmingEdition = ref<number | null>(null)
 const deleteBusy = ref(false)
-const editionForm = ref({ display_name: '', release_date: '', publisher: '', region: '', language: '' })
+const editionForm = ref({ display_name: '', release_date: '', publisher: '', regions: [] as string[], languages: [] as string[], region: '', language: '' })
 const identifiers = ref<Record<number, Identifier[]>>({})
 const addingIdentifier = ref<number | null>(null)
 const editingIdentifier = ref<number | null>(null)
@@ -62,8 +62,10 @@ function beginEditionEdit(edition: Edition) {
     display_name: edition.display_name,
     release_date: edition.release_date ?? '',
     publisher: edition.publisher ?? '',
-    region: edition.region ?? '',
-    language: edition.language ?? '',
+    regions: edition.regions,
+    languages: edition.languages,
+    region: edition.regions[0] ?? '',
+    language: edition.languages[0] ?? '',
   }
 }
 
@@ -77,14 +79,19 @@ async function saveEdition(editionId: number) {
       display_name: editionForm.value.display_name.trim(),
       release_date: editionForm.value.release_date || null,
       publisher: editionForm.value.publisher || null,
-      region: editionForm.value.region || null,
-      language: editionForm.value.language || null,
+      regions: replaceFirstValue(editionForm.value.regions, editionForm.value.region),
+      languages: replaceFirstValue(editionForm.value.languages, editionForm.value.language),
     })
     await catalog.loadDetail(id(), entryId())
     editingEdition.value = null
   } catch (cause) {
     error.value = message(cause)
   }
+}
+
+function replaceFirstValue(values: string[], value: string) {
+  const normalized = value.trim()
+  return normalized ? [normalized, ...values.slice(1)] : values.slice(1)
 }
 
 async function confirmEditionDelete() {
@@ -237,13 +244,11 @@ async function remove() {
 
 <template>
   <section class="page-content workspace-content">
-    <RouterLink class="back-link" :to="{ name: 'catalog', params: { collectionId: id() } }">← Catalog</RouterLink>
+    <RouterLink class="back-link" :to="{ name: 'catalog', params: { collectionId: id() } }">Back to advanced catalog</RouterLink>
     <div v-if="catalog.entry">
-      <div class="page-heading"><div><p class="eyebrow">Catalog entry</p><h1>{{ catalog.entry.display_title }}</h1></div></div>
-      <p>Type: {{ catalog.entry.type }}</p>
-      <p v-if="catalog.entry.sort_title">Sort title: {{ catalog.entry.sort_title }}</p>
-      <p v-if="catalog.entry.notes">{{ catalog.entry.notes }}</p>
-      <div v-if="canEdit">
+      <div class="page-heading"><div><p class="eyebrow">Advanced catalog · low-level record</p><h1>{{ catalog.entry.display_title }}</h1><p>Use Inventory for normal collection management.</p></div></div>
+      <section class="panel advanced-catalog-summary"><p>Type: {{ catalog.entry.type }}</p><p v-if="catalog.entry.sort_title">Sort title: {{ catalog.entry.sort_title }}</p><p v-if="catalog.entry.notes">{{ catalog.entry.notes }}</p></section>
+      <div v-if="canEdit" class="action-row">
         <button @click="beginEdit">Edit entry</button>
         <button class="button-danger" @click="confirming = true">Delete entry</button>
       </div>
@@ -252,8 +257,7 @@ async function remove() {
         <label>Type<input v-model="type" required /></label>
         <label>Sort title<input v-model="sortTitle" /></label>
         <label>Notes<textarea v-model="notes" /></label>
-        <button>Save</button>
-        <button type="button" @click="editing = false">Cancel</button>
+        <div class="action-row"><button>Save</button><button type="button" class="button-secondary" @click="editing = false">Cancel</button></div>
       </form>
       <section v-if="confirming" class="confirmation panel">
         <p>Deleting this catalog entry also removes all editions, identifiers and physical inventory copies belonging to it.</p>
@@ -267,8 +271,8 @@ async function remove() {
           <h3>{{ edition.display_name }}</h3>
           <span v-if="edition.release_date"> · {{ edition.release_date }}</span>
           <span v-if="edition.publisher"> · {{ edition.publisher }}</span>
-          <span v-if="edition.region"> · {{ edition.region }}</span>
-          <span v-if="edition.language"> · {{ edition.language }}</span>
+          <span v-if="edition.regions.length"> · {{ edition.regions.join(', ') }}</span>
+          <span v-if="edition.languages.length"> · {{ edition.languages.join(', ') }}</span>
           <button v-if="canEdit" :aria-label="`Edit edition ${edition.display_name}`" @click="beginEditionEdit(edition)">Edit edition</button>
           <button v-if="canEdit" class="button-danger" :aria-label="`Delete edition ${edition.display_name}`" @click="confirmingEdition = edition.id">Delete edition</button>
           <section v-if="confirmingEdition === edition.id">
@@ -276,14 +280,13 @@ async function remove() {
             <button class="button-danger" :disabled="deleteBusy" @click="confirmEditionDelete">{{ deleteBusy ? 'Deleting…' : 'Confirm delete' }}</button>
             <button @click="confirmingEdition = null">Cancel</button>
           </section>
-          <form v-if="editingEdition === edition.id" @submit.prevent="saveEdition(edition.id)">
+          <form v-if="editingEdition === edition.id" class="collection-form compact-form" @submit.prevent="saveEdition(edition.id)">
             <label>Display name<input v-model="editionForm.display_name" /></label>
             <label>Release date<input v-model="editionForm.release_date" type="date" /></label>
             <label>Publisher<input v-model="editionForm.publisher" /></label>
             <label>Region<input v-model="editionForm.region" /></label>
             <label>Language<input v-model="editionForm.language" /></label>
-            <button>Save edition</button>
-            <button type="button" @click="editingEdition = null">Cancel</button>
+            <div class="action-row"><button>Save edition</button><button type="button" class="button-secondary" @click="editingEdition = null">Cancel</button></div>
           </form>
           <section class="identifier-section">
             <h4>Barcodes &amp; IDs</h4>

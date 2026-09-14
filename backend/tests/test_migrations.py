@@ -224,3 +224,85 @@ def test_inventory_location_migration_preserves_items_and_reverses_cleanly(
         }
     finally:
         get_settings.cache_clear()
+
+
+def test_edition_media_format_migration_reverses_cleanly(monkeypatch, tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'edition-format.db'}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    config = migration_config(database_url)
+    command.upgrade(config, "0005_inventory_location")
+    engine = create_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(text("INSERT INTO collections (name, type) VALUES ('Films', 'movies')"))
+        connection.execute(
+            text(
+                "INSERT INTO catalog_entries (collection_id, display_title, type) "
+                "VALUES (1, 'Alien', 'movie')"
+            )
+        )
+        connection.execute(
+            text("INSERT INTO editions (catalog_entry_id, display_name) VALUES (1, 'Blu-ray')")
+        )  # noqa: E501
+    command.upgrade(config, "head")
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT media_format FROM editions")) is None
+    command.downgrade(config, "0005_inventory_location")
+    assert "media_format" not in {
+        column["name"] for column in inspect(engine).get_columns("editions")
+    }  # noqa: E501
+    command.upgrade(config, "head")
+    assert "media_format" in {column["name"] for column in inspect(engine).get_columns("editions")}
+
+
+def test_edition_regions_languages_migration_preserves_legacy_values(
+    monkeypatch, tmp_path: Path
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'edition-regions-languages.db'}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    get_settings.cache_clear()
+    config = migration_config(database_url)
+    command.upgrade(config, "0006_edition_media_format")
+    engine = create_engine(database_url)
+    with engine.begin() as connection:
+        connection.execute(text("INSERT INTO collections (name, type) VALUES ('Films', 'movies')"))
+        connection.execute(
+            text(
+                "INSERT INTO catalog_entries (collection_id, display_title, type) "
+                "VALUES (1, 'Alien', 'movie')"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO editions (catalog_entry_id, display_name, region, language) "
+                "VALUES (1, 'Blu-ray', 'B', 'German'), "
+                "(1, 'DVD', NULL, NULL)"
+            )
+        )
+
+    command.upgrade(config, "head")
+    with engine.connect() as connection:
+        assert connection.execute(
+            text("SELECT edition_id, value, position FROM edition_regions")
+        ).all() == [(1, "B", 0)]
+        assert connection.execute(
+            text("SELECT edition_id, value, position FROM edition_languages")
+        ).all() == [(1, "German", 0)]
+    assert {column["name"] for column in inspect(engine).get_columns("editions")}.isdisjoint(
+        {"region", "language"}
+    )
+
+    command.downgrade(config, "0006_edition_media_format")
+    with engine.connect() as connection:
+        assert connection.execute(
+            text("SELECT region, language FROM editions ORDER BY id")
+        ).all() == [
+            ("B", "German"),
+            (None, None),
+        ]
+    command.upgrade(config, "head")
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT value FROM edition_regions")).all() == [("B",)]
+        assert connection.execute(text("SELECT value FROM edition_languages")).all() == [
+            ("German",)
+        ]
+    get_settings.cache_clear()
