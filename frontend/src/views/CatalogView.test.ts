@@ -37,7 +37,7 @@ describe('CatalogView', () => {
     const wrapper = await view()
 
     expect(wrapper.get('h1').text()).toBe('Advanced catalog')
-    expect(wrapper.text()).toContain('For normal collection management, use Inventory.')
+    expect(wrapper.text()).toContain('Normal collection management is available through Inventory.')
     expect(wrapper.get('[aria-label="Collection navigation"]').findAll('a').map((link) => link.text())).toEqual(['Inventory', 'Locations', 'Settings'])
   })
 })

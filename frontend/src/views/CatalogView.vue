@@ -34,7 +34,7 @@ async function create() {
       <div>
         <p v-if="collections.collection" class="eyebrow">{{ collections.collection.name }}</p>
         <h1>Advanced catalog</h1>
-        <p>Low-level view of titles, editions and IDs. For normal collection management, use Inventory.</p>
+        <p>Low-level access to title, edition and identifier records. Normal collection management is available through Inventory.</p>
       </div>
       <button v-if="canEdit" @click="creating = true">New catalog entry</button>
     </div>
@@ -44,6 +44,7 @@ async function create() {
       <RouterLink :to="{ name: 'locations', params: { collectionId: id() } }">Locations</RouterLink>
       <RouterLink :to="{ name: 'collection-settings', params: { collectionId: id() } }">Settings</RouterLink>
     </nav>
+    <RouterLink class="back-link" :to="{ name: 'collection-settings', params: { collectionId: id() } }">← Back to Settings</RouterLink>
 
     <p v-if="catalog.error" class="form-error" role="alert">Catalog unavailable.</p>
     <template v-else>

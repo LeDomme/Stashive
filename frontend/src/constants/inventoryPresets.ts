@@ -1,6 +1,7 @@
 export const MEDIA_FORMAT_PRESETS = ['DVD', 'Blu-ray', 'UHD Blu-ray', 'HD DVD', 'LaserDisc', 'VHS']
 export const EDITION_PRESETS = ['Standard Edition', "Collector's Edition", "Director's Cut", 'Extended Edition', 'Limited Edition', 'Steelbook', 'Box Set']
 export const CONDITION_PRESETS = ['Sealed', 'Mint', 'Very Good', 'Good', 'Fair', 'Poor']
+export const IDENTIFIER_TYPE_PRESETS = ['EAN-13', 'EAN-8', 'UPC-A', 'UPC-E', 'ISBN-13']
 export const PUBLISHER_PRESETS = ['Warner Bros. Home Entertainment', 'Universal Pictures Home Entertainment', 'Paramount Home Entertainment', 'Sony Pictures Home Entertainment', 'Walt Disney Studios Home Entertainment', '20th Century Studios', 'StudioCanal', 'Lionsgate', 'MGM', 'LEONINE Studios', 'Plaion Pictures', 'Constantin Film', 'Capelight Pictures', 'Turbine Medien', 'Arrow Video', 'The Criterion Collection', 'Shout! Studios', 'Kino Lorber', 'Second Sight Films', '88 Films']
 export const LANGUAGE_PRESETS = ['German', 'English', 'French', 'Spanish', 'Italian', 'Portuguese', 'Dutch', 'Danish', 'Swedish', 'Norwegian', 'Finnish', 'Polish', 'Czech', 'Hungarian', 'Turkish', 'Russian', 'Japanese', 'Korean', 'Chinese (Mandarin)', 'Chinese (Cantonese)', 'Arabic']
 export const REGION_PRESETS_BY_MEDIA_FORMAT: Record<string, string[]> = {

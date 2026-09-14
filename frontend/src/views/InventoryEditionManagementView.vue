@@ -11,6 +11,8 @@ import { useLocationsStore } from "@/stores/locations";
 import PresetCustomField from "@/components/PresetCustomField.vue";
 import MultiPresetCustomField from "@/components/MultiPresetCustomField.vue";
 import { CONDITION_PRESETS, EDITION_PRESETS, LANGUAGE_PRESETS, MEDIA_FORMAT_PRESETS, PUBLISHER_PRESETS, REGION_PRESETS_BY_MEDIA_FORMAT } from "@/constants/inventoryPresets";
+import { IDENTIFIER_TYPE_PRESETS } from "@/constants/inventoryPresets";
+import { detectIdentifierType } from "@/utils/identifier";
 
 const route = useRoute();
 const router = useRouter();
@@ -25,6 +27,7 @@ const ready = ref(false);
 const confirmingDelete = ref(false);
 const confirmingIdentifier = ref<number | null>(null);
 const addingIdentifier = ref(false);
+const identifierTypeExpanded = ref(false);
 const form = ref({ display_name: "", media_format: "", release_date: "", publisher: "", regions: [] as string[], languages: [] as string[] });
 const copy = ref({ condition: "", notes: "", location_id: "" });
 const identifierForm = ref({ type: "", value: "", source: "" });
@@ -56,7 +59,11 @@ function message(cause: unknown, identifier = false) {
   }
   return "This action could not be completed. Please try again.";
 }
-function resetIdentifierForm() { identifierForm.value = { type: "", value: "", source: "" }; }
+function resetIdentifierForm() { identifierForm.value = { type: "", value: "", source: "" }; identifierTypeExpanded.value = false; }
+function updateIdentifierValue(value: string) {
+  identifierForm.value.value = value;
+  if (!identifierTypeExpanded.value) identifierForm.value.type = detectIdentifierType(value.trim()) ?? "";
+}
 async function load() {
   error.value = "";
   ready.value = false;
@@ -110,7 +117,7 @@ async function addIdentifier() {
   if (!editionId.value || !identifierForm.value.type.trim() || !identifierForm.value.value.trim()) { error.value = "Type and value are required."; return; }
   busy.value = true;
   try {
-    await catalog.createIdentifier(collectionId.value, editionId.value, { type: identifierForm.value.type.trim(), value: identifierForm.value.value.trim(), source: identifierForm.value.source.trim() || null });
+    await catalog.createIdentifier(collectionId.value, editionId.value, { type: identifierForm.value.type.trim(), value: identifierForm.value.value.trim(), source: "manual" });
     resetIdentifierForm(); addingIdentifier.value = false; await refreshLibrary();
   } catch (cause) { error.value = message(cause, true); } finally { busy.value = false; }
 }
@@ -172,13 +179,15 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId, route.param
         <section v-else-if="section === 'identifiers'" class="identifier-management">
           <h1>Barcodes &amp; IDs</h1>
           <p v-if="!identifiers.length" class="state-message">No barcodes or IDs.</p>
-          <ul v-else class="identifier-read-list">
-            <li v-for="identifier in identifiers" :key="identifier.id"><strong>{{ identifier.type }}</strong><span>{{ identifier.value }}</span><small v-if="identifier.source">{{ identifier.source }}</small><button class="button-danger button-compact" @click="confirmingIdentifier = identifier.id">Delete</button><div v-if="confirmingIdentifier === identifier.id" class="confirmation"><p>Delete this barcode or ID?</p><button class="button-danger button-compact" :disabled="busy" @click="removeIdentifier(identifier)">Confirm delete</button><button class="button-secondary button-compact" :disabled="busy" @click="confirmingIdentifier = null">Cancel</button></div></li>
+          <ul v-else class="identifier-read-list identifier-rows">
+            <li v-for="identifier in identifiers" :key="identifier.id"><strong class="identifier-type-badge">{{ identifier.type }}</strong><code>{{ identifier.value }}</code><small v-if="identifier.source && identifier.source.toLowerCase() !== 'manual'">{{ identifier.source }}</small><button class="button-danger button-compact" @click="confirmingIdentifier = identifier.id">Delete</button><div v-if="confirmingIdentifier === identifier.id" class="confirmation"><p>Delete this barcode or ID?</p><button class="button-danger button-compact" :disabled="busy" @click="removeIdentifier(identifier)">Confirm delete</button><button class="button-secondary button-compact" :disabled="busy" @click="confirmingIdentifier = null">Cancel</button></div></li>
           </ul>
           <button v-if="!addingIdentifier" @click="addingIdentifier = true">Add barcode or ID</button>
           <form v-else class="collection-form compact-form" @submit.prevent="addIdentifier">
-            <label>Type<input v-model="identifierForm.type" required /></label><label>Value<input v-model="identifierForm.value" required /></label><label>Source <span class="optional">optional</span><input v-model="identifierForm.source" /></label>
-            <div class="action-row"><button :disabled="busy">{{ busy ? "Saving…" : "Save barcode or ID" }}</button><button type="button" class="button-secondary" :disabled="busy" @click="addingIdentifier = false; resetIdentifierForm()">Cancel</button></div>
+            <label>Barcode / ID<input :value="identifierForm.value" autocomplete="off" @input="updateIdentifierValue(($event.target as HTMLInputElement).value)" required /></label>
+            <p v-if="identifierForm.type && !identifierTypeExpanded" class="field-hint">Detected type: <strong>{{ identifierForm.type }}</strong> <button type="button" class="button-ghost button-compact" @click="identifierTypeExpanded = true">Change type</button></p>
+            <template v-else><p v-if="!identifierForm.type" class="field-hint">Choose a type for this custom ID.</p><PresetCustomField id="identifier-type" v-model="identifierForm.type" label="Type" :presets="IDENTIFIER_TYPE_PRESETS" /></template>
+            <div class="action-row"><button :disabled="busy">{{ busy ? "Adding…" : "Add barcode / ID" }}</button><button type="button" class="button-secondary" :disabled="busy" @click="addingIdentifier = false; resetIdentifierForm()">Cancel</button></div>
           </form>
         </section>
         <section v-else class="danger-zone">
