@@ -62,7 +62,7 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
 
 <template>
   <section class="page-content workspace-content">
-    <RouterLink class="back-link" :to="detailRoute()">← Back to title</RouterLink>
+    <RouterLink class="back-link" :to="detailRoute()">Back to title</RouterLink>
     <p v-if="!canEdit && collections.collection" class="form-error" role="alert">You do not have permission to manage this title.</p>
     <div v-else-if="catalog.entry" class="management-layout inventory-management">
       <nav class="management-sidebar panel" aria-label="Title management sections">

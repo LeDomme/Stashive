@@ -44,7 +44,7 @@ async function create() {
       <RouterLink :to="{ name: 'locations', params: { collectionId: id() } }">Locations</RouterLink>
       <RouterLink :to="{ name: 'collection-settings', params: { collectionId: id() } }">Settings</RouterLink></div>
     </nav>
-    <RouterLink class="back-link" :to="{ name: 'collection-settings', params: { collectionId: id() } }">← Back to Settings</RouterLink>
+    <RouterLink class="back-link" :to="{ name: 'collection-settings', params: { collectionId: id() } }">Back to Settings</RouterLink>
 
     <p v-if="catalog.error" class="form-error" role="alert">Catalog unavailable.</p>
     <template v-else>

@@ -45,7 +45,7 @@ watch(() => newEdition.value.media_format, (format, previous) => {
 </script>
 <template>
   <section class="page-content workspace-content">
-    <RouterLink class="back-link" :to="{ name: 'inventory', params: { collectionId: id } }">← Back to inventory</RouterLink>
+    <RouterLink class="back-link" :to="{ name: 'inventory', params: { collectionId: id } }">Back to inventory</RouterLink>
     <p class="eyebrow">Inventory</p><h1>Add item</h1>
     <p v-if="!canEdit" class="form-error" role="alert">You do not have permission to add items.</p>
     <form v-else class="collection-form panel" @submit.prevent="submit">

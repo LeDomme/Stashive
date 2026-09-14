@@ -63,7 +63,7 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId, route.param
 
 <template>
   <section class="page-content workspace-content">
-    <RouterLink class="back-link" :to="detailRoute()">← Back to title</RouterLink>
+    <RouterLink class="back-link" :to="detailRoute()">Back to title</RouterLink>
     <p v-if="!canEdit && collections.collection" class="form-error" role="alert">You do not have permission to add a physical copy.</p>
     <template v-else-if="edition">
       <p class="eyebrow">{{ library.title?.catalog_entry.display_title }} · {{ edition.display_name }}<span v-if="edition.media_format"> · {{ edition.media_format }}</span></p>

@@ -55,7 +55,7 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
 
 <template>
   <section class="page-content workspace-content inventory-title-detail">
-    <RouterLink class="back-link" :to="{ name: 'inventory', params: { collectionId } }">← Back to Inventory</RouterLink>
+    <RouterLink class="back-link" :to="{ name: 'inventory', params: { collectionId } }">Back to Inventory</RouterLink>
     <p v-if="library.error" class="form-error" role="alert">{{ detailError() }}</p>
     <template v-else-if="library.title">
       <header class="inventory-title-detail__header panel">

@@ -970,3 +970,15 @@ button, .button-link { min-height: 2.5rem; padding-inline: 1.1rem; }
   .collection-nav__links { width: auto; }
   .collection-nav__action { width: auto; margin-left: auto; }
 }
+
+/* Keep the route context in the application header beside the account menu. */
+.brand small { order: -1; margin: 0 0 .55rem; font-weight: 700; }
+.header-back-link { margin-left: auto; color: var(--stashive-mint); font-weight: 500; text-decoration: none; white-space: nowrap; }
+.header-back-link:hover { color: #f2fff9; text-decoration: underline; text-underline-offset: .2em; }
+.application-header__content > .app-menu { margin-left: 0; }
+.page-content > .back-link { display: none; }
+@media (max-width: 42rem) {
+  .application-header__content { flex-wrap: wrap; padding-block: .75rem; }
+  .brand { flex: 1 0 100%; }
+  .header-back-link { font-size: .85rem; }
+}
