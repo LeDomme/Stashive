@@ -8,7 +8,7 @@ import * as locationsApi from '@/api/locations'
 import InventoryAddItemView from './InventoryAddItemView.vue'
 vi.mock('@/api/collections'); vi.mock('@/api/library'); vi.mock('@/api/locations')
 const router=createRouter({history:createMemoryHistory(),routes:[{path:'/collections/:collectionId/inventory/add',name:'inventory-add',component:InventoryAddItemView},{path:'/collections/:collectionId/inventory',name:'inventory',component:InventoryAddItemView},{path:'/collections/:collectionId/inventory/:catalogEntryId',name:'inventory-title',component:InventoryAddItemView}]})
-const title={id:2,collection_id:1,display_title:'Alien',type:'movies',sort_title:null,notes:null}; const detail={catalog_entry:title,editions:[{id:3,catalog_entry_id:2,display_name:'Special Edition',media_format:'Blu-ray',release_date:null,publisher:null,region:null,language:null,identifiers:[],copies:[]}]}
+const title={id:2,collection_id:1,display_title:'Alien',type:'movies',sort_title:null,notes:null}; const detail={catalog_entry:title,editions:[{id:3,catalog_entry_id:2,display_name:'Special Edition',media_format:'Blu-ray',release_date:null,publisher:null,regions:[],languages:[],identifiers:[],copies:[]}]}
 async function view(role:'owner'|'editor'|'viewer'='editor'){vi.mocked(collectionsApi.getCollection).mockResolvedValue({...title,name:'Films',role,owner:{id:1,username:'owner',display_name:null}});vi.mocked(locationsApi.listLocationTree).mockResolvedValue([{id:7,collection_id:1,parent_id:null,name:'House',type:'room',description:null,children:[{id:8,collection_id:1,parent_id:7,name:'Shelf',type:'shelf',description:null,children:[]}]}]);vi.mocked(libraryApi.searchTitles).mockResolvedValue([{id:2,catalog_entry_id:2,display_title:'Alien',sort_title:null,type:'movies',edition_count:1,copy_count:0,media_formats:['Blu-ray']}]);vi.mocked(libraryApi.getLibraryTitle).mockResolvedValue(detail);await router.push('/collections/1/inventory/add');const w=mount(InventoryAddItemView,{global:{plugins:[createPinia(),router]}});await flushPromises();return w}
 const button = (wrapper: ReturnType<typeof mount>, label: string) => wrapper.findAll('button').find((candidate) => candidate.text() === label)!
 async function createTitle(wrapper: ReturnType<typeof mount>, name = 'Arrival') {
@@ -36,7 +36,7 @@ describe('InventoryAddItemView',()=>{it('keeps viewers read-only and starts prog
     await flushPromises()
     expect(libraryApi.addItem).toHaveBeenCalledWith(1, {
       title: { existing_id: null, new: { display_title: 'Arrival', sort_title: null, notes: null, type: 'movies' } },
-      edition: { existing_id: null, new: { display_name: 'Steelbook', media_format: 'Blu-ray', release_date: null, publisher: null, region: null, language: null } },
+      edition: { existing_id: null, new: { display_name: 'Steelbook', media_format: 'Blu-ray', release_date: null, publisher: null, regions: [], languages: [] } },
       copy: { condition: 'Very Good', notes: null, location_id: null },
     })
     expect(libraryApi.listLibrary).toHaveBeenCalledWith(1, {})
@@ -49,13 +49,13 @@ describe('InventoryAddItemView',()=>{it('keeps viewers read-only and starts prog
     await button(wrapper, 'Create new edition').trigger('click')
     await wrapper.get('#edition').setValue('__custom__'); await wrapper.get('#edition-custom').setValue('40th Anniversary Edition')
     await wrapper.get('#media-format').setValue('__custom__'); await wrapper.get('#media-format-custom').setValue('Video CD')
-    await wrapper.get('#condition').setValue('__custom__'); await wrapper.get('#condition-custom').setValue('Sealed')
+    await wrapper.get('#condition').setValue('__custom__'); await wrapper.get('#condition-custom').setValue('Like new')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
     expect(libraryApi.addItem).toHaveBeenCalledWith(1, expect.objectContaining({
       title: { existing_id: 2, new: null },
       edition: expect.objectContaining({ existing_id: null, new: expect.objectContaining({ display_name: '40th Anniversary Edition', media_format: 'Video CD' }) }),
-      copy: { condition: 'Sealed', notes: null, location_id: null },
+      copy: { condition: 'Like new', notes: null, location_id: null },
     }))
   })
   it('submits only the selected existing edition and copy details', async () => {
@@ -76,12 +76,12 @@ describe('InventoryAddItemView',()=>{it('keeps viewers read-only and starts prog
     await createTitle(wrapper)
     await wrapper.get('#edition').setValue('__custom__'); await wrapper.get('#edition-custom').setValue('40th Anniversary Edition')
     await wrapper.get('#media-format').setValue('__custom__'); await wrapper.get('#media-format-custom').setValue('Video CD')
-    await wrapper.get('#condition').setValue('__custom__'); await wrapper.get('#condition-custom').setValue('Sealed')
+    await wrapper.get('#condition').setValue('__custom__'); await wrapper.get('#condition-custom').setValue('Like new')
     await wrapper.get('form').trigger('submit'); await flushPromises()
     expect(wrapper.get('[role="alert"]').text()).toContain('could not be added')
     expect((wrapper.get('#edition-custom').element as HTMLInputElement).value).toBe('40th Anniversary Edition')
     expect((wrapper.get('#media-format-custom').element as HTMLInputElement).value).toBe('Video CD')
-    expect((wrapper.get('#condition-custom').element as HTMLInputElement).value).toBe('Sealed')
+    expect((wrapper.get('#condition-custom').element as HTMLInputElement).value).toBe('Like new')
     await wrapper.get('form').trigger('submit'); await flushPromises()
     expect(libraryApi.addItem).toHaveBeenCalledTimes(2)
   })

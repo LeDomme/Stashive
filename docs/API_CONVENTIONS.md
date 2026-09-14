@@ -76,6 +76,12 @@ matches nor fuzzy matches are selected or merged automatically.
 `Edition.media_format` is nullable free-form text on an edition, rather than a catalog-entry field
 or backend enum. The UI offers presets for common values, but API clients may send custom strings.
 
+Edition `regions` and `languages` are ordered arrays of free-form values. An empty array means that
+the edition has no values; `null` is not used for these collections. A supplied PATCH array replaces
+the respective collection, while omitting it preserves the current values. Publisher/distributor
+remains a nullable scalar string. The movie UI may offer media-format-specific region and language
+presets, but neither the API nor the database restrict custom values.
+
 Location GET returns the complete nested tree for a collection. Roots and children are ordered
 case-insensitively by name, then by ID. Create accepts `name`, `type`, optional `description`,
 and optional `parent_id`. PATCH is partial: `parent_id: null` moves a node to the root and

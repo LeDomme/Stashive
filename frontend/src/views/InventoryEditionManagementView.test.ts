@@ -15,7 +15,7 @@ const router = createRouter({ history: createMemoryHistory(), routes: [
   { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/new', name: 'inventory-edition-new', component: InventoryEditionManagementView },
   { path: '/collections/:collectionId/inventory/:catalogEntryId/editions/:editionId/edit', name: 'inventory-edition-edit', component: InventoryEditionManagementView },
 ] })
-const edition = { id: 4, catalog_entry_id: 3, display_name: 'Special Edition', media_format: 'Blu-ray', release_date: '2003-01-01', publisher: 'Fox', region: 'B', language: 'English', identifiers: [{ id: 5, edition_id: 4, type: 'EAN', value: '123', source: 'manual' }], copies: [] }
+const edition = { id: 4, catalog_entry_id: 3, display_name: 'Special Edition', media_format: 'Blu-ray', release_date: '2003-01-01', publisher: 'Fox', regions: ['B'], languages: ['English'], identifiers: [{ id: 5, edition_id: 4, type: 'EAN', value: '123', source: 'manual' }], copies: [] }
 const detail = { catalog_entry: { id: 3, collection_id: 2, display_title: 'Alien', type: 'movie', sort_title: null, notes: null }, editions: [edition] }
 async function view(path = '/collections/2/inventory/3/editions/4/edit', role: 'editor' | 'viewer' = 'editor', response = detail) {
   vi.mocked(collectionsApi.getCollection).mockResolvedValue({ id: 2, name: 'Films', type: 'movies', description: null, role, owner: { id: 1, username: 'owner', display_name: null } })
@@ -31,7 +31,7 @@ afterEach(() => vi.clearAllMocks())
 
 describe('InventoryEditionManagementView', () => {
   it('edits existing values with null semantics and refreshes the detail', async () => {
-    vi.mocked(catalogApi.updateEdition).mockResolvedValue({ ...edition, publisher: null, region: null, language: null, media_format: null, release_date: null })
+    vi.mocked(catalogApi.updateEdition).mockResolvedValue({ ...edition, publisher: null, regions: [], languages: [], media_format: null, release_date: null })
     const wrapper = await view()
     expect(wrapper.get('input').element.value).toBe('Special Edition')
     const selects = wrapper.findAll('select')
@@ -39,7 +39,7 @@ describe('InventoryEditionManagementView', () => {
     const inputs = wrapper.findAll('input')
     await inputs[1].setValue(''); await inputs[2].setValue(''); await inputs[3].setValue(''); await inputs[4].setValue('')
     await wrapper.get('form').trigger('submit'); await flushPromises()
-    expect(catalogApi.updateEdition).toHaveBeenCalledWith(2, 4, { display_name: 'Special Edition', media_format: null, release_date: null, publisher: null, region: null, language: null })
+    expect(catalogApi.updateEdition).toHaveBeenCalledWith(2, 4, { display_name: 'Special Edition', media_format: null, release_date: null, publisher: null, regions: [], languages: [] })
     expect(router.currentRoute.value.name).toBe('inventory-title')
   })
   it('creates an edition from its dedicated route and supports cancel', async () => {

@@ -79,8 +79,8 @@ watch(() => [route.params.collectionId, route.params.catalogEntryId], load, { im
               <RouterLink v-if="canEdit" class="button-secondary button-compact button-link" :to="{ name: 'inventory-edition-edit', params: { collectionId, catalogEntryId: entryId, editionId: edition.id } }">Edit edition</RouterLink>
             </div>
           </header>
-          <div v-if="edition.release_date || edition.region || edition.language || edition.publisher" class="edition-detail-card__metadata">
-            <p v-if="edition.release_date || edition.region || edition.language">{{ [edition.release_date, edition.region && `Region ${edition.region}`, edition.language].filter(Boolean).join(" · ") }}</p>
+          <div v-if="edition.release_date || edition.regions.length || edition.languages.length || edition.publisher" class="edition-detail-card__metadata">
+            <p v-if="edition.release_date || edition.regions.length || edition.languages.length">{{ [edition.release_date, edition.regions.length && `Region ${edition.regions.join(', ')}`, edition.languages.join(', ')].filter(Boolean).join(" · ") }}</p>
             <p v-if="edition.publisher">{{ edition.publisher }}</p>
           </div>
           <section class="edition-detail-card__section">

@@ -18,7 +18,7 @@ const router = createRouter({ history: createMemoryHistory(), routes: [
   { path: '/collections/:collectionId/settings', name: 'collection-settings', component: InventoryView },
 ] })
 const entry = { id: 2, collection_id: 1, display_title: 'Blade Runner', type: 'movie', sort_title: null, notes: null }
-const edition = { id: 3, catalog_entry_id: 2, display_name: 'UHD Blu-ray', media_format: 'UHD Blu-ray', release_date: null, publisher: null, region: null, language: null }
+const edition = { id: 3, catalog_entry_id: 2, display_name: 'UHD Blu-ray', media_format: 'UHD Blu-ray', release_date: null, publisher: null, regions: [], languages: [] }
 const titles = [
   { id: 2, catalog_entry_id: 2, display_title: 'Blade Runner', sort_title: null, type: 'movie', edition_count: 2, copy_count: 3, media_formats: ['Blu-ray', 'UHD Blu-ray'] },
   { id: 5, catalog_entry_id: 5, display_title: 'Heat', sort_title: null, type: 'movie', edition_count: 1, copy_count: 0, media_formats: [] },

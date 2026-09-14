@@ -5,6 +5,17 @@ from datetime import date, datetime
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+def _metadata_values(values: list[str], *, maximum_length: int, name: str) -> list[str]:
+    """Validate explicit edition metadata values without restricting custom input."""
+    if any(not value.strip() for value in values):
+        raise ValueError(f"{name} values must not be blank")
+    if any(len(value) > maximum_length for value in values):
+        raise ValueError(f"{name} values must be at most {maximum_length} characters")
+    if len(set(values)) != len(values):
+        raise ValueError(f"{name} values must not be duplicated")
+    return values
+
+
 class CatalogEntryCreateInput(BaseModel):
     """Input for creating a conceptual title within the path collection."""
 
@@ -59,8 +70,18 @@ class EditionCreateInput(BaseModel):
     media_format: str | None = Field(default=None, max_length=64)
     release_date: date | None = None
     publisher: str | None = Field(default=None, max_length=255)
-    region: str | None = Field(default=None, max_length=64)
-    language: str | None = Field(default=None, max_length=64)
+    regions: list[str] = Field(default_factory=list, max_length=8)
+    languages: list[str] = Field(default_factory=list, max_length=32)
+
+    @field_validator("regions")
+    @classmethod
+    def regions_must_be_distinct_nonblank_values(cls, values: list[str]) -> list[str]:
+        return _metadata_values(values, maximum_length=64, name="Region")
+
+    @field_validator("languages")
+    @classmethod
+    def languages_must_be_distinct_nonblank_values(cls, values: list[str]) -> list[str]:
+        return _metadata_values(values, maximum_length=128, name="Language")
 
 
 class EditionUpdateInput(BaseModel):
@@ -70,8 +91,18 @@ class EditionUpdateInput(BaseModel):
     media_format: str | None = Field(default=None, max_length=64)
     release_date: date | None = None
     publisher: str | None = Field(default=None, max_length=255)
-    region: str | None = Field(default=None, max_length=64)
-    language: str | None = Field(default=None, max_length=64)
+    regions: list[str] = Field(default_factory=list, max_length=8)
+    languages: list[str] = Field(default_factory=list, max_length=32)
+
+    @field_validator("regions")
+    @classmethod
+    def regions_must_be_distinct_nonblank_values(cls, values: list[str]) -> list[str]:
+        return _metadata_values(values, maximum_length=64, name="Region")
+
+    @field_validator("languages")
+    @classmethod
+    def languages_must_be_distinct_nonblank_values(cls, values: list[str]) -> list[str]:
+        return _metadata_values(values, maximum_length=128, name="Language")
 
 
 class EditionResponse(BaseModel):
@@ -83,8 +114,8 @@ class EditionResponse(BaseModel):
     media_format: str | None
     release_date: date | None
     publisher: str | None
-    region: str | None
-    language: str | None
+    regions: list[str]
+    languages: list[str]
 
     model_config = {"from_attributes": True}
 

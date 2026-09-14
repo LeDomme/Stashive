@@ -92,8 +92,6 @@ class Edition(TimestampedModel, Base):
     media_format: Mapped[str | None] = mapped_column(String(64), nullable=True)
     release_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     publisher: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    region: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    language: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     catalog_entry: Mapped[CatalogEntry] = relationship(back_populates="editions")
     identifiers: Mapped[list["Identifier"]] = relationship(
@@ -106,6 +104,42 @@ class Edition(TimestampedModel, Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    regions: Mapped[list["EditionRegion"]] = relationship(
+        back_populates="edition",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="EditionRegion.position",
+    )
+    languages: Mapped[list["EditionLanguage"]] = relationship(
+        back_populates="edition",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="EditionLanguage.position",
+    )
+
+
+class EditionRegion(Base):
+    """Represent one region code or custom region value for an edition."""
+
+    __tablename__ = "edition_regions"
+    edition_id: Mapped[int] = mapped_column(
+        ForeignKey("editions.id", ondelete="CASCADE"), primary_key=True
+    )
+    value: Mapped[str] = mapped_column(String(64), primary_key=True)
+    position: Mapped[int] = mapped_column(nullable=False)
+    edition: Mapped[Edition] = relationship(back_populates="regions")
+
+
+class EditionLanguage(Base):
+    """Represent one language or custom language value for an edition."""
+
+    __tablename__ = "edition_languages"
+    edition_id: Mapped[int] = mapped_column(
+        ForeignKey("editions.id", ondelete="CASCADE"), primary_key=True
+    )
+    value: Mapped[str] = mapped_column(String(128), primary_key=True)
+    position: Mapped[int] = mapped_column(nullable=False)
+    edition: Mapped[Edition] = relationship(back_populates="languages")
 
 
 class Identifier(TimestampedModel, Base):

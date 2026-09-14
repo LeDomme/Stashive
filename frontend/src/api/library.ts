@@ -8,7 +8,7 @@ export interface LibraryTitleDetail { catalog_entry: CatalogEntry; editions: Lib
 export interface AddItemChoice<T> { existing_id: number | null; new: T | null }
 export interface AddItemPayload {
   title: AddItemChoice<Pick<CatalogEntry, 'display_title' | 'sort_title' | 'type' | 'notes'>>
-  edition: AddItemChoice<Pick<Edition, 'display_name' | 'media_format' | 'release_date' | 'publisher' | 'region' | 'language'>>
+  edition: AddItemChoice<Pick<Edition, 'display_name' | 'media_format' | 'release_date' | 'publisher'> & { regions: string[]; languages: string[] }>
   copy: { condition: string | null; notes: string | null; location_id: number | null }
 }
 export interface AddItemResponse { catalog_entry_id: number; edition_id: number; inventory_item_id: number }

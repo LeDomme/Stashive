@@ -20,11 +20,11 @@ const locations = [{ id: 1, collection_id: 2, parent_id: null, name: 'House', ty
 const detail = {
   catalog_entry: { id: 3, collection_id: 2, display_title: 'Alien', type: 'movie', sort_title: 'Alien, The', notes: 'A classic.' },
   editions: [
-    { id: 4, catalog_entry_id: 3, display_name: 'Special Edition', media_format: 'Blu-ray', release_date: '2003-01-01', publisher: 'Fox', region: 'B', language: 'English', identifiers: [{ id: 5, edition_id: 4, type: 'EAN', value: '123', source: 'manual' }], copies: [
+    { id: 4, catalog_entry_id: 3, display_name: 'Special Edition', media_format: 'Blu-ray', release_date: '2003-01-01', publisher: 'Fox', regions: ['B'], languages: ['English'], identifiers: [{ id: 5, edition_id: 4, type: 'EAN', value: '123', source: 'manual' }], copies: [
       { id: 7, edition_id: 4, condition: 'Very good', notes: 'Keep upright', location_id: 3, created_at: '2026-01-02T00:00:00', updated_at: '2026-01-02T00:00:00' },
       { id: 6, edition_id: 4, condition: null, notes: null, location_id: null, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00' },
     ] },
-    { id: 8, catalog_entry_id: 3, display_name: 'Director’s Cut', media_format: 'UHD Blu-ray', release_date: null, publisher: null, region: null, language: null, identifiers: [], copies: [] },
+    { id: 8, catalog_entry_id: 3, display_name: 'Director’s Cut', media_format: 'UHD Blu-ray', release_date: null, publisher: null, regions: [], languages: [], identifiers: [], copies: [] },
   ],
 }
 async function view(response = detail, role: 'editor' | 'viewer' = 'viewer') {

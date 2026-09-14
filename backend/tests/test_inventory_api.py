@@ -454,13 +454,13 @@ async def test_edition_api_supports_acl_partial_nulls_and_collection_scope(
         owner_headers = authenticate(client, database, users["owner"])
         created = await client.post(
             f"/api/collections/{collection_id}/catalog-entries/{entry_id}/editions",
-            json={"display_name": "Blu-ray", "publisher": "Fox", "language": "de"},
+            json={"display_name": "Blu-ray", "publisher": "Fox", "languages": ["de"]},
             headers=owner_headers,
         )
         edition_id = created.json()["id"]
         cleared = await client.patch(
             f"/api/collections/{collection_id}/editions/{edition_id}",
-            json={"publisher": None, "language": None},
+            json={"publisher": None, "languages": []},
             headers=owner_headers,
         )
         foreign_nested = await client.get(
@@ -475,9 +475,75 @@ async def test_edition_api_supports_acl_partial_nulls_and_collection_scope(
             f"/api/collections/{collection_id}/editions/{edition_id}", headers=viewer_headers
         )
     assert created.status_code == 201
-    assert cleared.json()["publisher"] is None and cleared.json()["language"] is None
+    assert cleared.json()["publisher"] is None and cleared.json()["languages"] == []
     assert foreign_nested.status_code == 404 and foreign_flat.status_code == 404
     assert denied.status_code == 403
+
+
+@pytest.mark.anyio
+async def test_edition_metadata_arrays_support_multiple_custom_values_and_add_item(
+    database: Database, inventory_context: dict[str, int | dict[str, User]]
+) -> None:
+    collection_id = inventory_context["collection_id"]
+    users = inventory_context["users"]
+    assert isinstance(collection_id, int) and isinstance(users, dict)
+    entry_id = add_entry(database, collection_id)
+    app.state.database = database
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        headers = authenticate(client, database, users["owner"])
+        created = await client.post(
+            f"/api/collections/{collection_id}/catalog-entries/{entry_id}/editions",
+            headers=headers,
+            json={
+                "display_name": "Custom Blu-ray",
+                "regions": ["A", "Custom region"],
+                "languages": ["German", "Klingon"],
+            },
+        )
+        edition_id = created.json()["id"]
+        updated = await client.patch(
+            f"/api/collections/{collection_id}/editions/{edition_id}",
+            headers=headers,
+            json={"regions": ["A", "B"], "languages": ["German", "English", "Klingon"]},
+        )
+        cleared = await client.patch(
+            f"/api/collections/{collection_id}/editions/{edition_id}",
+            headers=headers,
+            json={"regions": [], "languages": []},
+        )
+        added = await client.post(
+            f"/api/collections/{collection_id}/items",
+            headers=headers,
+            json={
+                "title": {
+                    "existing_id": None,
+                    "new": {"display_title": "Arrival", "type": "movie"},
+                },
+                "edition": {
+                    "existing_id": None,
+                    "new": {
+                        "display_name": "UHD",
+                        "regions": ["Region Free"],
+                        "languages": ["Japanese", "German"],
+                    },
+                },
+                "copy": {"condition": None, "notes": None, "location_id": None},
+            },
+        )
+        detail = await client.get(
+            f"/api/collections/{collection_id}/library/{added.json()['catalog_entry_id']}",
+            headers=headers,
+        )
+    assert created.status_code == 201
+    assert created.json()["regions"] == ["A", "Custom region"]
+    assert created.json()["languages"] == ["German", "Klingon"]
+    assert updated.json()["regions"] == ["A", "B"]
+    assert updated.json()["languages"] == ["German", "English", "Klingon"]
+    assert cleared.json()["regions"] == cleared.json()["languages"] == []
+    assert added.status_code == 201
+    assert detail.status_code == 200
+    assert detail.json()["editions"][0]["regions"] == ["Region Free"]
+    assert detail.json()["editions"][0]["languages"] == ["Japanese", "German"]
 
 
 @pytest.mark.anyio

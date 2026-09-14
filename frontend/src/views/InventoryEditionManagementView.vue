@@ -20,7 +20,7 @@ const busy = ref(false);
 const confirmingDelete = ref(false);
 const confirmingIdentifier = ref<number | null>(null);
 const addingIdentifier = ref(false);
-const form = ref({ display_name: "", media_format: "", release_date: "", publisher: "", region: "", language: "" });
+const form = ref({ display_name: "", media_format: "", release_date: "", publisher: "", regions: [] as string[], languages: [] as string[], region: "", language: "" });
 const identifierForm = ref({ type: "", value: "", source: "" });
 const collectionId = computed(() => Number(route.params.collectionId));
 const entryId = computed(() => Number(route.params.catalogEntryId));
@@ -48,15 +48,16 @@ async function load() {
   if (!canEdit.value) return;
   await library.loadDetail(collectionId.value, entryId.value);
   if (!isNew.value && !edition.value) { error.value = "This edition is not available."; return; }
-  if (edition.value) form.value = { display_name: edition.value.display_name, media_format: edition.value.media_format ?? "", release_date: edition.value.release_date ?? "", publisher: edition.value.publisher ?? "", region: edition.value.region ?? "", language: edition.value.language ?? "" };
-  else form.value = { display_name: "", media_format: "", release_date: "", publisher: "", region: "", language: "" };
+  if (edition.value) form.value = { display_name: edition.value.display_name, media_format: edition.value.media_format ?? "", release_date: edition.value.release_date ?? "", publisher: edition.value.publisher ?? "", regions: edition.value.regions, languages: edition.value.languages, region: edition.value.regions[0] ?? "", language: edition.value.languages[0] ?? "" };
+  else form.value = { display_name: "", media_format: "", release_date: "", publisher: "", regions: [], languages: [], region: "", language: "" };
 }
 async function refreshLibrary() {
   await Promise.all([library.loadDetail(collectionId.value, entryId.value), library.load(collectionId.value)]);
 }
 function editionPayload() {
-  return { display_name: form.value.display_name.trim(), media_format: form.value.media_format.trim() || null, release_date: form.value.release_date || null, publisher: form.value.publisher.trim() || null, region: form.value.region.trim() || null, language: form.value.language.trim() || null };
+  return { display_name: form.value.display_name.trim(), media_format: form.value.media_format.trim() || null, release_date: form.value.release_date || null, publisher: form.value.publisher.trim() || null, regions: replaceFirstValue(form.value.regions, form.value.region), languages: replaceFirstValue(form.value.languages, form.value.language) };
 }
+function replaceFirstValue(values: string[], value: string) { const normalized = value.trim(); return normalized ? [normalized, ...values.slice(1)] : values.slice(1); }
 async function save() {
   if (!form.value.display_name.trim()) { error.value = "Edition name is required."; return; }
   busy.value = true;

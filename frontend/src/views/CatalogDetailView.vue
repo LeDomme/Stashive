@@ -19,7 +19,7 @@ const editing = ref(false)
 const editingEdition = ref<number | null>(null)
 const confirmingEdition = ref<number | null>(null)
 const deleteBusy = ref(false)
-const editionForm = ref({ display_name: '', release_date: '', publisher: '', region: '', language: '' })
+const editionForm = ref({ display_name: '', release_date: '', publisher: '', regions: [] as string[], languages: [] as string[], region: '', language: '' })
 const identifiers = ref<Record<number, Identifier[]>>({})
 const addingIdentifier = ref<number | null>(null)
 const editingIdentifier = ref<number | null>(null)
@@ -62,8 +62,10 @@ function beginEditionEdit(edition: Edition) {
     display_name: edition.display_name,
     release_date: edition.release_date ?? '',
     publisher: edition.publisher ?? '',
-    region: edition.region ?? '',
-    language: edition.language ?? '',
+    regions: edition.regions,
+    languages: edition.languages,
+    region: edition.regions[0] ?? '',
+    language: edition.languages[0] ?? '',
   }
 }
 
@@ -77,14 +79,19 @@ async function saveEdition(editionId: number) {
       display_name: editionForm.value.display_name.trim(),
       release_date: editionForm.value.release_date || null,
       publisher: editionForm.value.publisher || null,
-      region: editionForm.value.region || null,
-      language: editionForm.value.language || null,
+      regions: replaceFirstValue(editionForm.value.regions, editionForm.value.region),
+      languages: replaceFirstValue(editionForm.value.languages, editionForm.value.language),
     })
     await catalog.loadDetail(id(), entryId())
     editingEdition.value = null
   } catch (cause) {
     error.value = message(cause)
   }
+}
+
+function replaceFirstValue(values: string[], value: string) {
+  const normalized = value.trim()
+  return normalized ? [normalized, ...values.slice(1)] : values.slice(1)
 }
 
 async function confirmEditionDelete() {
@@ -267,8 +274,8 @@ async function remove() {
           <h3>{{ edition.display_name }}</h3>
           <span v-if="edition.release_date"> · {{ edition.release_date }}</span>
           <span v-if="edition.publisher"> · {{ edition.publisher }}</span>
-          <span v-if="edition.region"> · {{ edition.region }}</span>
-          <span v-if="edition.language"> · {{ edition.language }}</span>
+          <span v-if="edition.regions.length"> · {{ edition.regions.join(', ') }}</span>
+          <span v-if="edition.languages.length"> · {{ edition.languages.join(', ') }}</span>
           <button v-if="canEdit" :aria-label="`Edit edition ${edition.display_name}`" @click="beginEditionEdit(edition)">Edit edition</button>
           <button v-if="canEdit" class="button-danger" :aria-label="`Delete edition ${edition.display_name}`" @click="confirmingEdition = edition.id">Delete edition</button>
           <section v-if="confirmingEdition === edition.id">

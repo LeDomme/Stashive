@@ -135,7 +135,9 @@ Key concepts:
 - edition display name
 - release date optional
 - publisher/distributor optional
-- region/language optional
+- publisher/distributor optional scalar value
+- regions as zero or more normalized values
+- languages as zero or more normalized values
 - timestamps
 
 ### identifiers
@@ -271,7 +273,7 @@ Possible fields:
 - edition_id PK/FK
 - media_format
 - disc_count
-- region code
+- region codes (zero or more normalized values)
 - edition label
 - distributor
 - release date
@@ -320,7 +322,7 @@ Potential fields:
 1:1 with edition.
 
 Potential fields:
-- language
+- languages (zero or more normalized values)
 - publisher
 - edition name
 - release date

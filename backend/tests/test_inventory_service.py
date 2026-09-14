@@ -79,8 +79,8 @@ def test_catalog_and_edition_crud_cascade_dependents(database: Database) -> None
             display_name="German Blu-ray",
             release_date=date(2010, 1, 1),
             publisher="Fox",
-            region="B",
-            language="de",
+            regions=["B"],
+            languages=["de"],
         )
         second_edition = service.create_edition(
             session,
@@ -99,8 +99,8 @@ def test_catalog_and_edition_crud_cascade_dependents(database: Database) -> None
             display_name="German UHD",
             release_date=None,
             publisher=None,
-            region=None,
-            language="de",
+            regions=[],
+            languages=["de"],
         )
         service.create_identifier(
             session,
@@ -118,11 +118,11 @@ def test_catalog_and_edition_crud_cascade_dependents(database: Database) -> None
         assert (
             updated_edition.display_name,
             updated_edition.release_date,
-            updated_edition.language,
+            [language.value for language in updated_edition.languages],
         ) == (
             "German UHD",
             None,
-            "de",
+            ["de"],
         )
         assert second_edition.catalog_entry_id == entry.id
         assert second_entry.collection_id == collection_id

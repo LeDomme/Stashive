@@ -48,6 +48,19 @@ from app.inventory.service import (
 router = APIRouter(prefix="/collections", tags=["inventory"])
 
 
+def edition_response(edition: Edition) -> EditionResponse:
+    return EditionResponse(
+        id=edition.id,
+        catalog_entry_id=edition.catalog_entry_id,
+        display_name=edition.display_name,
+        media_format=edition.media_format,
+        release_date=edition.release_date,
+        publisher=edition.publisher,
+        regions=[region.value for region in edition.regions],
+        languages=[language.value for language in edition.languages],
+    )
+
+
 def editable_collection_or_403(
     session: DatabaseSession, user: User, collection_id: int
 ) -> Collection:
@@ -240,6 +253,8 @@ def get_library_title(
         .options(
             selectinload(CatalogEntry.editions).selectinload(Edition.identifiers),
             selectinload(CatalogEntry.editions).selectinload(Edition.inventory_items),
+            selectinload(CatalogEntry.editions).selectinload(Edition.regions),
+            selectinload(CatalogEntry.editions).selectinload(Edition.languages),
         )
     )  # noqa: E501
     if entry is None:
@@ -254,8 +269,8 @@ def get_library_title(
                 "media_format": edition.media_format,
                 "release_date": edition.release_date,
                 "publisher": edition.publisher,
-                "region": edition.region,
-                "language": edition.language,
+                "regions": [region.value for region in edition.regions],
+                "languages": [language.value for language in edition.languages],
                 "identifiers": edition.identifiers,
                 "copies": edition.inventory_items,
             }
@@ -444,11 +459,15 @@ def list_editions(
     """List all editions of a title in stable identifier order."""
     collection, _ = collection_or_404(session, user, collection_id)
     entry_in_collection_or_404(session, collection, entry_id)
-    return list(
+    editions = list(
         session.scalars(
-            select(Edition).where(Edition.catalog_entry_id == entry_id).order_by(Edition.id)
+            select(Edition)
+            .where(Edition.catalog_entry_id == entry_id)
+            .options(selectinload(Edition.regions), selectinload(Edition.languages))
+            .order_by(Edition.id)
         )
     )
+    return [edition_response(edition) for edition in editions]
 
 
 @router.post(
@@ -466,16 +485,17 @@ def create_edition(
     """Create an edition beneath a title the caller may edit."""
     collection = editable_collection_or_403(session, user, collection_id)
     entry = entry_in_collection_or_404(session, collection, entry_id)
-    return InventoryService().create_edition(
+    edition = InventoryService().create_edition(
         session,
         catalog_entry_id=entry.id,
         display_name=payload.display_name,
         media_format=payload.media_format,
         release_date=payload.release_date,
         publisher=payload.publisher,
-        region=payload.region,
-        language=payload.language,
+        regions=payload.regions,
+        languages=payload.languages,
     )
+    return edition_response(edition)
 
 
 @router.get("/{collection_id}/editions/{edition_id}", response_model=EditionResponse)
@@ -487,7 +507,9 @@ def get_edition(
 ) -> Edition:
     """Get one edition without exposing editions from other collections."""
     collection, _ = collection_or_404(session, user, collection_id)
-    return edition_in_collection_or_404(session, collection, edition_id)
+    edition = edition_in_collection_or_404(session, collection, edition_id)
+    session.refresh(edition, attribute_names=["regions", "languages"])
+    return edition_response(edition)
 
 
 @router.patch("/{collection_id}/editions/{edition_id}", response_model=EditionResponse)
@@ -502,16 +524,21 @@ def update_edition(
     collection = editable_collection_or_403(session, user, collection_id)
     edition = edition_in_collection_or_404(session, collection, edition_id)
     fields = payload.model_fields_set
-    return InventoryService().update_edition(
+    updated = InventoryService().update_edition(
         session,
         edition_id=edition.id,
         display_name=payload.display_name if "display_name" in fields else edition.display_name,
         media_format=payload.media_format if "media_format" in fields else edition.media_format,
         release_date=payload.release_date if "release_date" in fields else edition.release_date,
         publisher=payload.publisher if "publisher" in fields else edition.publisher,
-        region=payload.region if "region" in fields else edition.region,
-        language=payload.language if "language" in fields else edition.language,
+        regions=payload.regions
+        if "regions" in fields
+        else [region.value for region in edition.regions],
+        languages=payload.languages
+        if "languages" in fields
+        else [language.value for language in edition.languages],
     )
+    return edition_response(updated)
 
 
 @router.delete("/{collection_id}/editions/{edition_id}", status_code=status.HTTP_204_NO_CONTENT)

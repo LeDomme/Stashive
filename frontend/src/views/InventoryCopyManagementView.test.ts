@@ -17,7 +17,7 @@ const router = createRouter({ history: createMemoryHistory(), routes: [
 const locations = [{ id: 1, collection_id: 2, parent_id: null, name: 'House', type: 'room' as const, description: null, children: [{ id: 2, collection_id: 2, parent_id: 1, name: 'Basement', type: 'room' as const, description: null, children: [{ id: 3, collection_id: 2, parent_id: 2, name: 'Shelf', type: 'shelf' as const, description: null, children: [] }] }, { id: 4, collection_id: 2, parent_id: 1, name: 'Office', type: 'room' as const, description: null, children: [{ id: 5, collection_id: 2, parent_id: 4, name: 'Shelf', type: 'shelf' as const, description: null, children: [] }] }] }]
 const first = { id: 6, edition_id: 4, condition: 'Good', notes: 'First copy', location_id: 3, created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00' }
 const second = { id: 7, edition_id: 4, condition: null, notes: null, location_id: null, created_at: '2026-01-02T00:00:00', updated_at: '2026-01-02T00:00:00' }
-const detail = { catalog_entry: { id: 3, collection_id: 2, display_title: 'Alien', type: 'movie', sort_title: null, notes: null }, editions: [{ id: 4, catalog_entry_id: 3, display_name: 'Special Edition', media_format: 'Blu-ray', release_date: null, publisher: null, region: null, language: null, identifiers: [], copies: [first, second] }, { id: 8, catalog_entry_id: 3, display_name: 'Other', media_format: null, release_date: null, publisher: null, region: null, language: null, identifiers: [], copies: [{ ...first, id: 9, edition_id: 8 }] }] }
+const detail = { catalog_entry: { id: 3, collection_id: 2, display_title: 'Alien', type: 'movie', sort_title: null, notes: null }, editions: [{ id: 4, catalog_entry_id: 3, display_name: 'Special Edition', media_format: 'Blu-ray', release_date: null, publisher: null, regions: [], languages: [], identifiers: [], copies: [first, second] }, { id: 8, catalog_entry_id: 3, display_name: 'Other', media_format: null, release_date: null, publisher: null, regions: [], languages: [], identifiers: [], copies: [{ ...first, id: 9, edition_id: 8 }] }] }
 async function view(path = '/collections/2/inventory/3/editions/4/copies/7/edit', role: 'editor' | 'viewer' = 'editor', response = detail) {
   vi.mocked(collectionsApi.getCollection).mockResolvedValue({ id: 2, name: 'Films', type: 'movies', description: null, role, owner: { id: 1, username: 'owner', display_name: null } })
   vi.mocked(libraryApi.getLibraryTitle).mockResolvedValue(response)
@@ -60,13 +60,13 @@ describe('InventoryCopyManagementView', () => {
     expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith(2, 6, { condition: 'Very Good', notes: 'First copy' })
   })
   it('shows and preserves an unknown custom condition', async () => {
-    const sealed = { ...second, condition: 'Sealed' }
+    const sealed = { ...second, condition: 'Like new' }
     vi.mocked(inventoryApi.updateInventoryItem).mockResolvedValue(sealed)
     const wrapper = await view(undefined, 'editor', { ...detail, editions: [{ ...detail.editions[0], copies: [first, sealed] }, detail.editions[1]] })
     expect((wrapper.get('#copy-condition').element as HTMLSelectElement).value).toBe('__custom__')
-    expect((wrapper.get('#copy-condition-custom').element as HTMLInputElement).value).toBe('Sealed')
+    expect((wrapper.get('#copy-condition-custom').element as HTMLInputElement).value).toBe('Like new')
     await wrapper.get('form').trigger('submit'); await flushPromises()
-    expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith(2, 7, { condition: 'Sealed', notes: null })
+    expect(inventoryApi.updateInventoryItem).toHaveBeenCalledWith(2, 7, { condition: 'Like new', notes: null })
   })
   it('cancels general editing without mutation', async () => {
     const wrapper = await view()
