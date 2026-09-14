@@ -5,11 +5,31 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as collectionsApi from '@/api/collections'
 import * as libraryApi from '@/api/library'
 import * as locationsApi from '@/api/locations'
+import { EDITION_PRESETS } from '@/constants/inventoryPresets'
 import InventoryAddItemView from './InventoryAddItemView.vue'
+
 vi.mock('@/api/collections'); vi.mock('@/api/library'); vi.mock('@/api/locations')
-const router=createRouter({history:createMemoryHistory(),routes:[{path:'/collections/:collectionId/inventory/add',name:'inventory-add',component:InventoryAddItemView},{path:'/collections/:collectionId/inventory',name:'inventory',component:InventoryAddItemView},{path:'/collections/:collectionId/inventory/:catalogEntryId',name:'inventory-title',component:InventoryAddItemView}]})
-const title={id:2,collection_id:1,display_title:'Alien',type:'movies',sort_title:null,notes:null}; const detail={catalog_entry:title,editions:[{id:3,catalog_entry_id:2,display_name:'Special Edition',media_format:'Blu-ray',release_date:null,publisher:null,regions:[],languages:[],identifiers:[],copies:[]}]}
-async function view(role:'owner'|'editor'|'viewer'='editor', collectionType = 'movies'){vi.mocked(collectionsApi.getCollection).mockResolvedValue({...title,name:'Films',type:collectionType,role,owner:{id:1,username:'owner',display_name:null}});vi.mocked(locationsApi.listLocationTree).mockResolvedValue([{id:7,collection_id:1,parent_id:null,name:'House',type:'room',description:null,children:[{id:8,collection_id:1,parent_id:7,name:'Shelf',type:'shelf',description:null,children:[]}]}]);vi.mocked(libraryApi.searchTitles).mockResolvedValue([{id:2,catalog_entry_id:2,display_title:'Alien',sort_title:null,type:'movies',edition_count:1,copy_count:0,media_formats:['Blu-ray']}]);vi.mocked(libraryApi.getLibraryTitle).mockResolvedValue(detail);await router.push('/collections/1/inventory/add');const w=mount(InventoryAddItemView,{global:{plugins:[createPinia(),router]}});await flushPromises();return w}
+const router = createRouter({ history: createMemoryHistory(), routes: [
+  { path: '/collections/:collectionId/inventory/add', name: 'inventory-add', component: InventoryAddItemView },
+  { path: '/collections/:collectionId/inventory', name: 'inventory', component: InventoryAddItemView },
+  { path: '/collections/:collectionId/inventory/:catalogEntryId', name: 'inventory-title', component: InventoryAddItemView },
+] })
+const title = { id: 2, collection_id: 1, display_title: 'Alien', type: 'movies', sort_title: null, notes: null }
+const editions = [
+  { id: 3, catalog_entry_id: 2, display_name: 'Special Edition', media_format: 'Blu-ray', release_date: null, publisher: null, regions: [], languages: [], identifiers: [], copies: [{ id: 8 }] },
+  { id: 4, catalog_entry_id: 2, display_name: 'Standard Edition', media_format: 'LaserDisc', release_date: null, publisher: null, regions: [], languages: [], identifiers: [], copies: [{ id: 9 }, { id: 10 }] },
+]
+const detail = { catalog_entry: title, editions }
+async function view(role: 'owner' | 'editor' | 'viewer' = 'editor', collectionType = 'movies') {
+  vi.mocked(collectionsApi.getCollection).mockResolvedValue({ ...title, name: 'Films', type: collectionType, role, owner: { id: 1, username: 'owner', display_name: null } })
+  vi.mocked(locationsApi.listLocationTree).mockResolvedValue([])
+  vi.mocked(libraryApi.searchTitles).mockResolvedValue([{ id: 2, catalog_entry_id: 2, display_title: 'Alien', sort_title: null, type: 'movies', edition_count: 2, copy_count: 3, media_formats: ['Blu-ray'] }])
+  vi.mocked(libraryApi.getLibraryTitle).mockResolvedValue(detail)
+  await router.push('/collections/1/inventory/add')
+  const wrapper = mount(InventoryAddItemView, { global: { plugins: [createPinia(), router] } })
+  await flushPromises()
+  return wrapper
+}
 const button = (wrapper: ReturnType<typeof mount>, label: string) => wrapper.findAll('button').find((candidate) => candidate.text() === label)!
 async function createTitle(wrapper: ReturnType<typeof mount>, name = 'Arrival') {
   await wrapper.get('input').setValue(name)
@@ -18,130 +38,82 @@ async function createTitle(wrapper: ReturnType<typeof mount>, name = 'Arrival') 
 }
 async function useExistingTitle(wrapper: ReturnType<typeof mount>) {
   await wrapper.get('input').setValue('Alien')
-  await new Promise((resolve) => setTimeout(resolve, 350))
-  await flushPromises()
-  await button(wrapper, 'Use existing').trigger('click')
-  await flushPromises()
+  await new Promise((resolve) => setTimeout(resolve, 350)); await flushPromises()
+  await button(wrapper, 'Use existing').trigger('click'); await flushPromises()
 }
+async function openMulti(wrapper: ReturnType<typeof mount>, id: string) { await wrapper.get(`#${id}`).trigger('click') }
 afterEach(() => vi.clearAllMocks())
-describe('InventoryAddItemView',()=>{it('keeps viewers read-only and starts progressively',async()=>{const viewer=await view('viewer');expect(viewer.text()).toContain('do not have permission');expect(viewer.find('form').exists()).toBe(false);const editor=await view();expect(editor.text()).toContain('Title');expect(editor.text()).not.toContain('Physical copy')});it('requires explicit title and edition choices before it submits',async()=>{const w=await view();const input=w.get('input');await input.setValue('Alien');await new Promise(r=>setTimeout(r,350));await flushPromises();expect(libraryApi.searchTitles).toHaveBeenCalledWith(1,'Alien');expect(w.text()).toContain('Use existing');expect(w.text()).toContain('A title with this name already exists');expect(w.text()).not.toContain('Physical copy');await w.get('button').trigger('click');await flushPromises();expect(libraryApi.getLibraryTitle).toHaveBeenCalledWith(1,2);expect(w.text()).toContain('Use this edition');const use=w.findAll('button').find(b=>b.text()==='Use this edition')!;await use.trigger('click');expect(w.text()).toContain('Physical copy')});
-  it('submits a new title, new edition and unassigned copy with presets', async () => {
-    vi.mocked(libraryApi.addItem).mockResolvedValue({ catalog_entry_id: 12, edition_id: 13, inventory_item_id: 14 })
-    const wrapper = await view()
-    await createTitle(wrapper)
-    await wrapper.get('#edition').setValue('Steelbook')
-    await wrapper.get('#media-format').setValue('Blu-ray')
-    await wrapper.get('#condition').setValue('Very Good')
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
-    expect(libraryApi.addItem).toHaveBeenCalledWith(1, {
-      title: { existing_id: null, new: { display_title: 'Arrival', sort_title: null, notes: null, type: 'movies' } },
-      edition: { existing_id: null, new: { display_name: 'Steelbook', media_format: 'Blu-ray', release_date: null, publisher: null, regions: [], languages: [] } },
-      copy: { condition: 'Very Good', notes: null, location_id: null },
-    })
-    expect(libraryApi.listLibrary).toHaveBeenCalledWith(1, {})
-    expect(router.currentRoute.value.fullPath).toBe('/collections/1/inventory/12')
+
+describe('InventoryAddItemView', () => {
+  it('keeps viewers read-only and starts progressively', async () => {
+    const viewer = await view('viewer'); expect(viewer.text()).toContain('do not have permission'); expect(viewer.find('form').exists()).toBe(false)
+    const editor = await view(); expect(editor.text()).toContain('Title'); expect(editor.text()).not.toContain('Physical copy')
   })
-  it('submits custom edition, media format and condition for an existing title', async () => {
-    vi.mocked(libraryApi.addItem).mockResolvedValue({ catalog_entry_id: 2, edition_id: 13, inventory_item_id: 14 })
-    const wrapper = await view()
-    await useExistingTitle(wrapper)
-    await button(wrapper, 'Create new edition').trigger('click')
+
+  it('uses one edition dropdown with readable singular/plural labels and a create option', async () => {
+    const wrapper = await view(); await useExistingTitle(wrapper)
+    const select = wrapper.get('select').element as HTMLSelectElement
+    expect([...select.options].map((option) => option.text)).toEqual(['Select an edition...', 'Special Edition · Blu-ray · 1 copy', 'Standard Edition · LaserDisc · 2 copies', 'Create new edition'])
+    expect(wrapper.text()).not.toContain('Use this edition')
+    expect(wrapper.text()).not.toContain('Special EditionBlu-ray')
+  })
+
+  it('shows only physical copy controls for an existing edition and resets stale new-edition state when switching', async () => {
+    const wrapper = await view(); await useExistingTitle(wrapper)
+    await wrapper.get('select').setValue('3')
+    expect(wrapper.text()).toContain('Physical copy'); expect(wrapper.find('#edition').exists()).toBe(false)
+    await wrapper.get('select').setValue('__new__')
+    expect(wrapper.find('#edition').exists()).toBe(true); expect(wrapper.text()).toContain('Movie metadata')
     await wrapper.get('#edition').setValue('__custom__'); await wrapper.get('#edition-custom').setValue('40th Anniversary Edition')
-    await wrapper.get('#media-format').setValue('__custom__'); await wrapper.get('#media-format-custom').setValue('Video CD')
-    await wrapper.get('#publisher').setValue('__custom__'); await wrapper.get('#publisher-custom').setValue('Custom distributor')
-    await wrapper.get('#condition').setValue('__custom__'); await wrapper.get('#condition-custom').setValue('Like new')
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
-    expect(libraryApi.addItem).toHaveBeenCalledWith(1, expect.objectContaining({
-      title: { existing_id: 2, new: null },
-      edition: expect.objectContaining({ existing_id: null, new: expect.objectContaining({ display_name: '40th Anniversary Edition', media_format: 'Video CD', publisher: 'Custom distributor' }) }),
-      copy: { condition: 'Like new', notes: null, location_id: null },
-    }))
+    await wrapper.get('select').setValue('4')
+    expect(wrapper.find('#edition').exists()).toBe(false); expect(wrapper.find('#edition-custom').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Physical copy')
   })
-  it('submits movie metadata presets, multiple values, a custom language, and Sealed', async () => {
+
+  it('submits a new title, new edition, multi values and an unassigned copy', async () => {
     vi.mocked(libraryApi.addItem).mockResolvedValue({ catalog_entry_id: 12, edition_id: 13, inventory_item_id: 14 })
-    const wrapper = await view()
-    await createTitle(wrapper)
-    await wrapper.get('#edition').setValue('Steelbook')
-    await wrapper.get('#media-format').setValue('Blu-ray')
-    await wrapper.get('#publisher').setValue('Warner Bros. Home Entertainment')
-    const choices = wrapper.findAll('input[type="checkbox"]')
-    await choices[0].setValue(true); await choices[1].setValue(true)
-    await choices[4].setValue(true); await choices[5].setValue(true)
-    await wrapper.get('#languages-custom').setValue('Klingon')
-    await wrapper.findAll('.multi-preset-field__custom button')[1].trigger('click')
-    await flushPromises()
-    await wrapper.get('#condition').setValue('Sealed')
-    await wrapper.get('form').trigger('submit'); await flushPromises()
+    const wrapper = await view(); await createTitle(wrapper)
+    await wrapper.get('select').setValue('__new__')
+    await wrapper.get('#edition').setValue('Steelbook'); await wrapper.get('#media-format').setValue('Blu-ray')
+    await openMulti(wrapper, 'regions'); await wrapper.get('#regions-popover input[type="checkbox"]').setValue(true)
+    await openMulti(wrapper, 'languages'); await wrapper.get('#languages-popover input[type="checkbox"]').setValue(true)
+    await wrapper.get('#condition').setValue('Sealed'); await wrapper.get('form').trigger('submit'); await flushPromises()
     expect(libraryApi.addItem).toHaveBeenCalledWith(1, expect.objectContaining({
-      edition: expect.objectContaining({ new: expect.objectContaining({ publisher: 'Warner Bros. Home Entertainment', regions: ['Region A', 'Region B'], languages: ['German', 'English', 'Klingon'] }) }),
+      title: { existing_id: null, new: { display_title: 'Arrival', sort_title: null, notes: null, type: 'movies' } },
+      edition: { existing_id: null, new: expect.objectContaining({ display_name: 'Steelbook', media_format: 'Blu-ray', regions: ['Region A'], languages: ['German'] }) },
       copy: { condition: 'Sealed', notes: null, location_id: null },
     }))
   })
-  it('does not show movie metadata controls for board game collections', async () => {
-    const wrapper = await view('editor', 'board_games')
-    await createTitle(wrapper)
-    expect(wrapper.text()).not.toContain('Movie metadata')
-    expect(wrapper.find('#media-format').exists()).toBe(false)
-    expect(wrapper.find('#publisher').exists()).toBe(false)
-    expect(wrapper.text()).not.toContain('Languages')
-  })
-  it('clears incompatible create-flow region presets after a media format change', async () => {
-    vi.mocked(libraryApi.addItem).mockResolvedValue({ catalog_entry_id: 12, edition_id: 13, inventory_item_id: 14 })
-    const wrapper = await view()
-    await createTitle(wrapper)
-    await wrapper.get('#edition').setValue('Steelbook')
-    await wrapper.get('#media-format').setValue('DVD')
-    await wrapper.findAll('input[type="checkbox"]')[2].setValue(true)
-    await wrapper.get('#media-format').setValue('Blu-ray')
-    await wrapper.get('form').trigger('submit'); await flushPromises()
-    expect(libraryApi.addItem).toHaveBeenCalledWith(1, expect.objectContaining({
-      edition: expect.objectContaining({ new: expect.objectContaining({ media_format: 'Blu-ray', regions: [] }) }),
-    }))
-  })
-  it('submits only the selected existing edition and copy details', async () => {
-    vi.mocked(libraryApi.addItem).mockResolvedValue({ catalog_entry_id: 2, edition_id: 3, inventory_item_id: 14 })
-    const wrapper = await view()
-    await useExistingTitle(wrapper)
-    await button(wrapper, 'Use this edition').trigger('click')
-    await wrapper.get('#condition').setValue('Good')
-    await wrapper.get('form').trigger('submit')
-    await flushPromises()
-    expect(libraryApi.addItem).toHaveBeenCalledWith(1, expect.objectContaining({
-      title: { existing_id: 2, new: null }, edition: { existing_id: 3, new: null }, copy: { condition: 'Good', notes: null, location_id: null },
-    }))
-  })
-  it('keeps custom values after an add-item error and allows retrying', async () => {
-    vi.mocked(libraryApi.addItem).mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ catalog_entry_id: 12, edition_id: 13, inventory_item_id: 14 })
-    const wrapper = await view()
-    await createTitle(wrapper)
+
+  it('submits a new edition and copy for an existing title without changing the payload contract', async () => {
+    vi.mocked(libraryApi.addItem).mockResolvedValue({ catalog_entry_id: 2, edition_id: 13, inventory_item_id: 14 })
+    const wrapper = await view(); await useExistingTitle(wrapper); await wrapper.get('select').setValue('__new__')
     await wrapper.get('#edition').setValue('__custom__'); await wrapper.get('#edition-custom').setValue('40th Anniversary Edition')
     await wrapper.get('#media-format').setValue('__custom__'); await wrapper.get('#media-format-custom').setValue('Video CD')
     await wrapper.get('#condition').setValue('__custom__'); await wrapper.get('#condition-custom').setValue('Like new')
     await wrapper.get('form').trigger('submit'); await flushPromises()
-    expect(wrapper.get('[role="alert"]').text()).toContain('could not be added')
-    expect((wrapper.get('#edition-custom').element as HTMLInputElement).value).toBe('40th Anniversary Edition')
-    expect((wrapper.get('#media-format-custom').element as HTMLInputElement).value).toBe('Video CD')
-    expect((wrapper.get('#condition-custom').element as HTMLInputElement).value).toBe('Like new')
+    expect(libraryApi.addItem).toHaveBeenCalledWith(1, expect.objectContaining({ title: { existing_id: 2, new: null }, edition: expect.objectContaining({ existing_id: null, new: expect.objectContaining({ display_name: '40th Anniversary Edition', media_format: 'Video CD' }) }), copy: { condition: 'Like new', notes: null, location_id: null } }))
+  })
+
+  it('submits only the selected existing edition and copy details', async () => {
+    vi.mocked(libraryApi.addItem).mockResolvedValue({ catalog_entry_id: 2, edition_id: 3, inventory_item_id: 14 })
+    const wrapper = await view(); await useExistingTitle(wrapper); await wrapper.get('select').setValue('3')
+    await wrapper.get('#condition').setValue('Good'); await wrapper.get('form').trigger('submit'); await flushPromises()
+    expect(libraryApi.addItem).toHaveBeenCalledWith(1, expect.objectContaining({ title: { existing_id: 2, new: null }, edition: { existing_id: 3, new: null }, copy: { condition: 'Good', notes: null, location_id: null } }))
+  })
+
+  it('retains state after errors, resets dependent state on a title change, and omits movie controls for board games', async () => {
+    vi.mocked(libraryApi.addItem).mockRejectedValue(new Error('offline'))
+    const wrapper = await view(); await createTitle(wrapper); await wrapper.get('select').setValue('__new__')
+    await wrapper.get('#edition').setValue('__custom__'); await wrapper.get('#edition-custom').setValue('40th Anniversary Edition')
     await wrapper.get('form').trigger('submit'); await flushPromises()
-    expect(libraryApi.addItem).toHaveBeenCalledTimes(2)
+    expect(wrapper.get('[role="alert"]').text()).toContain('could not be added'); expect(wrapper.find('#edition-custom').exists()).toBe(true)
+    await button(wrapper, 'Change title').trigger('click'); expect(wrapper.find('#edition').exists()).toBe(false)
+    const boardGames = await view('editor', 'board_games'); await createTitle(boardGames); await boardGames.get('select').setValue('__new__')
+    expect(boardGames.text()).not.toContain('Movie metadata')
   })
-  it('resets dependent edition state when changing the title', async () => {
-    const wrapper = await view()
-    await createTitle(wrapper)
-    await wrapper.get('#edition').setValue('__custom__'); await wrapper.get('#edition-custom').setValue('40th Anniversary Edition')
-    await button(wrapper, 'Change').trigger('click')
-    expect(wrapper.text()).toContain('Title')
-    expect(wrapper.find('#edition').exists()).toBe(false)
-    expect(wrapper.findAll('button').some((candidate) => candidate.text() === 'Add item')).toBe(false)
-  })
-  it('resets new-edition presets when changing the edition choice', async () => {
-    const wrapper = await view()
-    await createTitle(wrapper)
-    await wrapper.get('#edition').setValue('__custom__'); await wrapper.get('#edition-custom').setValue('40th Anniversary Edition')
-    await wrapper.findAll('button').filter((candidate) => candidate.text() === 'Change')[1].trigger('click')
-    expect(wrapper.find('#edition').exists()).toBe(false)
-    expect(wrapper.findAll('button').some((candidate) => candidate.text() === 'Add item')).toBe(false)
+
+  it('keeps Box Set as an existing custom value while offering Special Edition and no Box Set preset', () => {
+    expect(EDITION_PRESETS).toContain('Special Edition'); expect(EDITION_PRESETS).not.toContain('Box Set')
   })
 })

@@ -769,6 +769,45 @@ h1 {
   .filter-toolbar__actions > button { flex: 1; justify-content: center; }
 }
 
+/* U03d.5: Meshive-aligned operational type scale and restrained dark actions. */
+:root { --stashive-weight-control: 500; --stashive-weight-label: 550; --stashive-weight-heading: 600; }
+body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 400; }
+h1, h2, h3, h4 { font-weight: var(--stashive-weight-heading); }
+label, .multi-preset-field__label, .collection-nav a, .toolbar-checkbox { font-weight: var(--stashive-weight-label); }
+button, .button-link { font-weight: var(--stashive-weight-control); }
+.eyebrow, .collection-card__type, .location-type-badge, .edition-format-badge { font-weight: 600; }
+.application-nav a, .app-menu__popover a, .app-menu__signout, .brand small { font-weight: 500; }
+.brand strong { font-size: clamp(2.75rem, 8vw, 5.5rem); font-weight: 650; line-height: .82; }
+.brand__logo { width: clamp(3.2rem, 6vw, 4.75rem); height: clamp(3.2rem, 6vw, 4.75rem); }
+.application-header, .application-header__content { min-height: 5.8rem; }
+button, .button-secondary, .collection-nav__action { border: 1px solid rgb(111 243 199 / .42); color: #dcfff0; background: linear-gradient(135deg, #0c3d2d, #08271d); box-shadow: none; }
+button:hover:not(:disabled), .button-secondary:hover:not(:disabled), .collection-nav__action:hover { border-color: var(--stashive-mint); color: #f2fff9; background: linear-gradient(135deg, #10513b, #0b3426); filter: none; }
+.collection-nav__action { margin-left: auto; color: #dcfff0 !important; }
+.collection-nav a.router-link-active:not(.collection-nav__action) { color: #04170f; background: var(--stashive-mint); }
+.button-ghost { border-color: transparent; background: transparent; }
+.button-danger { border-color: rgb(254 178 170 / .45); color: #fff4f2; background: #8e2a24; }
+.button-danger:hover:not(:disabled) { background: #ad362d; }
+.action-row, .inventory-title-detail__actions, .edition-detail-card__actions { gap: .75rem; }
+.selected-flow-value { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+
+.multi-preset-field { position: relative; display: grid; gap: .4rem; min-width: 0; }
+.multi-preset-field__label { color: var(--color-text-primary); }
+.multi-preset-field__trigger { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .75rem; color: var(--color-text-primary); text-align: left; }
+.multi-preset-field__trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.multi-preset-field__popover { position: relative; z-index: 1; display: grid; width: min(26rem, 100%); gap: .75rem; padding: .85rem; border: 1px solid rgb(111 243 199 / .3); border-radius: .7rem; background: #0a2119; box-shadow: 0 .75rem 1.5rem rgb(0 0 0 / .28); }
+.multi-preset-field__selected, .multi-preset-field__presets { display: flex; flex-wrap: wrap; gap: .45rem; }
+.multi-preset-field__chip, .multi-preset-field__option { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; padding: .3rem .45rem; border: 1px solid var(--border); border-radius: .45rem; color: #d8f5e8; font-weight: 400; background: rgb(16 230 161 / .05); }
+.multi-preset-field__option { cursor: pointer; }
+.multi-preset-field__option input { width: auto; margin: 0; accent-color: var(--stashive-glow); }
+.multi-preset-field__custom { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; padding-top: .65rem; border-top: 1px solid rgb(111 243 199 / .16); }
+.multi-preset-field__custom label { grid-column: 1 / -1; }
+@media (max-width: 42rem) {
+  .brand strong { font-size: clamp(2.75rem, 13vw, 3.6rem); }
+  .application-header, .application-header__content { min-height: 5.35rem; }
+  .multi-preset-field__popover { width: min(100%, calc(100vw - 2.25rem)); }
+  .inventory-title-detail__actions > *, .edition-detail-card__actions > * { flex: 1 1 auto; text-align: center; justify-content: center; }
+}
+
 /* U02e: compact filter summary and a stable locations master/detail workspace. */
 .filter-toolbar { display: block; padding: 0; overflow: hidden; }
 .filter-toolbar__controls { display: flex; flex-wrap: wrap; align-items: end; gap: .65rem; padding: .8rem .9rem; }
@@ -862,3 +901,37 @@ button:hover:not(:disabled) { background: #0b8b67; }
   .locations-workspace { grid-template-columns: 1fr; }
   .locations-workspace .management-sidebar, .locations-workspace .management-panel, .locations-workspace__form { grid-column: 1; grid-row: auto; }
 }
+
+/* Final U03d.5 cascade: use the shared restrained weights and action language. */
+body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-weight: 400; }
+h1, h2, h3, h4 { font-weight: 600; }
+label, .multi-preset-field__label, .collection-nav a, .toolbar-checkbox { font-weight: 550; }
+button, .button-link { font-weight: 500; }
+.eyebrow, .collection-card__type, .location-type-badge, .edition-format-badge { font-weight: 600; }
+.library-card__title { font-weight: 600; }
+.library-card__cover { font-weight: 600; }
+.inventory-title-detail__type, .inventory-title-detail__cover, .location-form-context { font-weight: 500; }
+.brand strong { font-size: clamp(2.75rem, 8vw, 5.5rem); font-weight: 650; line-height: .82; }
+.brand__logo { width: clamp(3.2rem, 6vw, 4.75rem); height: clamp(3.2rem, 6vw, 4.75rem); }
+.application-header, .application-header__content { min-height: 5.8rem; }
+button, .button-secondary, .collection-nav__action { border: 1px solid rgb(111 243 199 / .42); color: #dcfff0; background: linear-gradient(135deg, #0c3d2d, #08271d); box-shadow: none; }
+button:hover:not(:disabled), .button-secondary:hover:not(:disabled), .collection-nav__action:hover { border-color: var(--stashive-mint); color: #f2fff9; background: linear-gradient(135deg, #10513b, #0b3426); filter: none; }
+.collection-nav__action { margin-left: auto; color: #dcfff0 !important; }
+.collection-nav a.router-link-active:not(.collection-nav__action) { color: #04170f; background: var(--stashive-mint); }
+.button-ghost { border-color: transparent; background: transparent; }
+.button-danger { border-color: rgb(254 178 170 / .45); color: #fff4f2; background: #8e2a24; }
+.button-danger:hover:not(:disabled) { background: #ad362d; }
+.action-row, .inventory-title-detail__actions, .edition-detail-card__actions { gap: .75rem; }
+.selected-flow-value { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.multi-preset-field { position: relative; display: grid; gap: .4rem; min-width: 0; }
+.multi-preset-field__label { color: var(--color-text-primary); }
+.multi-preset-field__trigger { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: .75rem; padding: .65rem .75rem; color: var(--color-text-primary); text-align: left; }
+.multi-preset-field__trigger > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.multi-preset-field__popover { position: relative; z-index: 1; display: grid; width: min(26rem, 100%); gap: .75rem; padding: .85rem; border: 1px solid rgb(111 243 199 / .3); border-radius: .7rem; background: #0a2119; box-shadow: 0 .75rem 1.5rem rgb(0 0 0 / .28); }
+.multi-preset-field__selected, .multi-preset-field__presets { display: flex; flex-wrap: wrap; gap: .45rem; }
+.multi-preset-field__chip, .multi-preset-field__option { display: inline-flex; align-items: center; gap: .4rem; min-width: 0; padding: .3rem .45rem; border: 1px solid var(--border); border-radius: .45rem; color: #d8f5e8; font-weight: 400; background: rgb(16 230 161 / .05); }
+.multi-preset-field__option { cursor: pointer; }
+.multi-preset-field__option input { width: auto; margin: 0; accent-color: var(--stashive-glow); }
+.multi-preset-field__custom { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .5rem; padding-top: .65rem; border-top: 1px solid rgb(111 243 199 / .16); }
+.multi-preset-field__custom label { grid-column: 1 / -1; }
+@media (max-width: 42rem) { .brand strong { font-size: clamp(2.75rem, 13vw, 3.6rem); } .application-header, .application-header__content { min-height: 5.35rem; } .multi-preset-field__popover { width: min(100%, calc(100vw - 2.25rem)); } .inventory-title-detail__actions > *, .edition-detail-card__actions > * { flex: 1 1 auto; text-align: center; justify-content: center; } }
